@@ -2,7 +2,10 @@
 
 A [mise](https://github.com/jdx/mise) backend plugin for installing tools using [Nix](https://nixos.org/).
 
-You can manually search for versions at [NixHub](https://www.nixhub.io/)
+You can manually search for packages at [NixHub](https://www.nixhub.io/)
+
+## Prerequisites
+- Nix
 
 ## Installation
 
