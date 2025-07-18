@@ -5,6 +5,7 @@ A [mise](https://github.com/jdx/mise) backend plugin for installing tools using 
 You can manually search for packages at [NixHub](https://www.nixhub.io/)
 
 ## Prerequisites
+- Mise
 - Nix
 
 ## Installation
@@ -14,7 +15,7 @@ Install the plugin
 mise plugin install nix https://github.com/jbadeau/mise-nix.git
 ```
 
-List available versions
+List available versions for your platform
 ```shell
 mise ls-remote nix:helmfile
 ```
@@ -37,5 +38,5 @@ mise exec -- helmfile --version
 ## Local Development
 Install the plugin
 ```shell
-mise plugin link nix /path/to/mise-nix
+mise init
 ```
