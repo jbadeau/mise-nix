@@ -26,7 +26,7 @@ function PLUGIN:BackendInstall(ctx)
   end
 
   if not commit or not attr then
-    error("❌ Could not find commit/attr for " .. tool .. "@" .. version_str)
+    error("Could not find commit/attr for " .. tool .. "@" .. version_str)
   end
 
   local ref = string.format("github:NixOS/nixpkgs/%s#%s", commit, attr)
@@ -38,7 +38,7 @@ function PLUGIN:BackendInstall(ctx)
   local store_path = result:match("^([^\n]+)")
 
   if not store_path then
-    error("❌ Failed to parse nix build output")
+    error("Failed to parse nix build output")
   end
 
   -- Replace install_path with symlink to store path
