@@ -1,0 +1,7 @@
+[tools]
+lua = "latest"
+"nix:helmfile" = "latest"
+
+[tasks.init]
+description = "Init"
+run = "mise plugin link nix $PWD --force"
