@@ -1,109 +1,81 @@
 # mise-nix
 
-A [mise](https://github.com/jdx/mise) backend plugin that installs tools using the [Nix package manager](https://nixos.org/).
+A [mise](https://github.com/jdx/mise) plugin backend for installing tools via [Nix](https://nixos.org/).
 
-This plugin automatically resolves and installs platform-compatible versions using metadata from [NixHub](https://www.nixhub.io/).
-
----
-
-## Features
-
-- Seamless integration with `mise`
-- Platform-aware: installs only compatible versions for your OS and architecture
-- Works with tools available via [NixHub](https://www.nixhub.io/)
-- Uses the Nix binary cache (builds only if necessary)
-
----
+You can browse packages manually on [NixHub](https://www.nixhub.io/).
 
 ## Prerequisites
 
 - [Mise](https://github.com/jdx/mise)
-- [Nix](https://nixos.org/download.html)
+- [Nix](https://nixos.org/)
 
----
+### Nix Configuration
+
+To ensure the plugin works correctly, add the following to your Nix configuration:
+
+```ini
+experimental-features = nix-command flakes
+substitute = true
+```
+
+Location: `nix.conf` (commonly found at `/etc/nix/nix.conf`, depending on your system)
+
+If you're in an airgapped or restricted environment and want to strictly avoid local builds, you may optionally add:
+
+```ini
+max-jobs = 0
+```
+
+This disables all local builds, so installations will only succeed if the requested tools are available in your configured binary caches. If a binary is not available, the install will fail.
+
+Make sure your system is configured to use trusted binary caches like `https://cache.nixos.org` or any [Cachix](https://www.cachix.org/) cache you rely on.
 
 ## Installation
 
-Install the plugin:
-
-```bash
+```sh
 mise plugin install nix https://github.com/jbadeau/mise-nix.git
 ```
 
----
-
 ## Usage
 
-### List available versions for your platform
+List available versions:
 
-```bash
+```sh
 mise ls-remote nix:helmfile
 ```
 
-### Install a specific version
+Install a specific version:
 
-```bash
+```sh
 mise install nix:helmfile@1.1.2
 ```
 
-### Use in a project
+Use in a project:
 
-```bash
+```sh
 mise use nix:helmfile@1.1.2
 ```
 
-### Execute the tool
+Run the tool:
 
-```bash
+```sh
 mise exec -- helmfile --version
 ```
 
----
-
-## Configuration
-
-By default, the plugin will build packages if they are not available in the Nix cache.
-
-To use only cached binaries and prevent builds, set:
-
-```bash
-export MISE_NIX_ONLY_CACHED=1
-```
-
----
-
 ## Development
 
-Link your local clone of the plugin into `mise`:
+Initialize the plugin for development:
 
-```bash
+```sh
 mise init
 ```
 
-You can then test locally with:
+### Running Tests
 
-```bash
-mise use nix:<tool>
-```
+You can run the test suite to validate the plugin utilities:
 
----
-
-## Testing
-
-Run Lua unit tests:
-
-```bash
+```sh
 lua test_utils.lua
 ```
 
----
-
-## Resources
-
-- [NixHub](https://www.nixhub.io/)
-- [NixOS Manual](https://nixos.org/manual/)
-- [Mise Documentation](https://mise.jdx.dev)
-
----
-
-@jbadeau
+All tests should pass successfully. If you add or modify utility functions, be sure to update and rerun the test suite.

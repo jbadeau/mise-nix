@@ -1,7 +1,8 @@
-function PLUGIN:BackendInstall(ctx)
-  local cmd = require("cmd")
-  local utils = require("utils")
+local cmd = require("cmd")
+local json = require("json")
+local utils = require("utils")
 
+function PLUGIN:BackendInstall(ctx)
   local tool = ctx.tool
   local requested_version = ctx.version
   local install_path = ctx.install_path
@@ -12,12 +13,7 @@ function PLUGIN:BackendInstall(ctx)
   local success, data, response = utils.fetch_tool_metadata(tool)
   utils.validate_tool_metadata(success, data, tool, response)
 
-  local compatible = {}
-  for _, release in ipairs(data.releases) do
-    if utils.is_compatible(release.platforms_summary, current_os, current_arch) then
-      table.insert(compatible, release)
-    end
-  end
+  local compatible = utils.filter_compatible_versions(data.releases, current_os, current_arch)
 
   if #compatible == 0 then
     error("No compatible versions found for " .. tool .. " on " .. current_os .. " (" .. current_arch .. ")")
@@ -39,7 +35,7 @@ function PLUGIN:BackendInstall(ctx)
       error("Requested version not found or not compatible: " .. requested_version)
     end
   else
-    target_release = compatible[#compatible] -- latest
+    target_release = compatible[#compatible]
   end
 
   local platform = target_release.platforms and target_release.platforms[1]
@@ -47,20 +43,11 @@ function PLUGIN:BackendInstall(ctx)
     error("No platform build found for version " .. target_release.version)
   end
 
-  local repo_url = utils.get_nixpkgs_repo_url()
-  local ref = string.format("github:%s/%s#%s", repo_url:gsub("https://github.com/", ""), platform.commit_hash, platform.attribute_path)
-
-  local build_flags = "--extra-experimental-features nix-command --extra-experimental-features flakes"
-
-  if os.getenv("MISE_NIX_ONLY_CACHED") == "1" then
-    build_flags = build_flags .. " --max-jobs 0"
-  end
-
-  local cmdline = string.format("nix build --no-link --print-out-paths %s '%s'", build_flags, ref)
+  local ref = string.format("github:NixOS/nixpkgs/%s#%s", platform.commit_hash, platform.attribute_path)
+  local cmdline = string.format("nix build --no-link --print-out-paths '%s'", ref)
 
   local result = cmd.exec(cmdline)
   local store_path = result:match("^([^\n]+)")
-
   if not store_path then
     error("Failed to parse nix build output")
   end
