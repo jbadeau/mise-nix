@@ -15,7 +15,7 @@ it easy to:
 * **Simplify package installation:** Use familiar `mise` commands for Nix-based installations. 
 * **Great DX:** While there are many Nix frontends available, I personally enjoy the developer 
   experience that `mise` provides. It gives me a single, consistent frontend to manage not only my tools and packages, 
-  but also environment variables.
+  but also environment variables and tasks.
 ---
 
 ## Prerequisites
