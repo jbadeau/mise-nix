@@ -7,14 +7,17 @@ packages using [Nix](https://nixos.org/).
 
 ## Why
 
-Nix is a powerful package manager that provides reproducible and declarative builds. However, it can be complex to 
-integrate into daily workflows. `mise-nix` bridges this gap by offering:
+Nix offers a powerful, reproducible package system — but integrating it smoothly into day-to-day development can be challenging.
 
-* **Access to thousands of packages:** Easily browse available tools on [NixHub](https://www.nixhub.io/).
-* **Reproducible environments:** Ensure consistency across machines with Nix’s robust dependency management.
-* **Simple, intuitive CLI:** Leverage the familiar `mise` commands to install and manage tools using Nix.
-* **Unified developer workflow:** Rather than juggling multiple tools, `mise` provides a single frontend for managing tools, versions, environment variables, and tasks.
-* **Great DX (Developer Experience):** While there are many frontends for Nix, `mise` offers a performant and consistent interface that’s easy to adopt and pleasant to use.
+- **Nix is powerful, but complex**: Setting up Nix to work reliably in typical development workflows often requires deep domain knowledge and custom configuration.
+- **Direnv is flexible, but slow**: Tools like `direnv` enable project-based environments but can introduce noticeable delays in shell startup time.
+- **`mise` is fast and developer-focused**: It provides snappy performance and a consistent UX across tools and languages.
+
+`mise-nix` brings the best of both worlds:
+- ✅ Access thousands of reproducible Nix packages from [NixHub](https://www.nixhub.io/)
+- ✅ Use familiar `mise` commands to install and manage tools without writing `shell.nix` or `flake.nix`
+- ✅ Integrate environment variables, tool versions, and tasks in a single, declarative config
+- ✅ Avoid the learning curve of traditional Nix usage while still benefiting from its features 
 
 ---
 
