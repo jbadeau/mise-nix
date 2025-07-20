@@ -40,7 +40,7 @@ substitute = true
 ```
 
 ### Airgapped or Restricted Environments
-If you operate in an airgapped or restricted network environment and need to strictly prevent local builds, you can 
+If you operate in a restricted environment and need to strictly prevent local builds, you can 
 optionally add:
 
 ```ini
