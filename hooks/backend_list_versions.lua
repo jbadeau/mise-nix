@@ -15,9 +15,7 @@ function PLUGIN:BackendListVersions(ctx)
   local versions = {}
   for _, release in ipairs(data.releases) do
     local version = release.version
-    local summary = release.platforms_summary
-
-    if utils.is_valid_version(version) and utils.is_compatible(summary, current_os, current_arch) then
+    if utils.is_valid_version(version) and utils.is_compatible(release.platforms_summary, current_os, current_arch) then
       table.insert(versions, version)
     end
   end

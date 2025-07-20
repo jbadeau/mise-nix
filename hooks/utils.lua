@@ -1,5 +1,3 @@
--- utils.lua
-
 local M = {}
 
 function M.normalize_os(os)
@@ -20,7 +18,8 @@ function M.is_compatible(summary, os, arch)
 end
 
 function M.is_valid_version(version)
-  return version and version ~= "" and version:match("^[%w%.%-]+$")
+  if type(version) ~= "string" or version == "" then return false end
+  return version:match("^[%w%.%-]+$") ~= nil
 end
 
 function M.get_nixhub_base_url()
@@ -67,6 +66,16 @@ function M.semver_less_than(a, b)
   if va.pre == "" and vb.pre ~= "" then return false end
   if va.pre ~= "" and vb.pre == "" then return true end
   return va.pre < vb.pre
+end
+
+function M.filter_compatible_versions(releases, os, arch)
+  local filtered = {}
+  for _, release in ipairs(releases) do
+    if M.is_compatible(release.platforms_summary, os, arch) then
+      table.insert(filtered, release)
+    end
+  end
+  return filtered
 end
 
 return M
