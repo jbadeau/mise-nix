@@ -18,9 +18,10 @@ function M.is_compatible(summary, os, arch)
 end
 
 function M.is_valid_version(version)
-  return type(version) == "string"
-    and version ~= ""
-    and version:match("^[%w%.%-]+$") ~= nil
+  if type(version) ~= "string" or version == "" then
+    return false
+  end
+  return version:match("^[%w%.%-]+$") ~= nil
 end
 
 function M.fetch_tool_metadata(tool)
@@ -56,10 +57,13 @@ function M.semver_less_than(a, b)
   if va.minor ~= vb.minor then return va.minor < vb.minor end
   if va.patch ~= vb.patch then return va.patch < vb.patch end
 
-  -- Pre-release comparison: "" > "alpha"
   if va.pre == "" and vb.pre ~= "" then return false end
   if va.pre ~= "" and vb.pre == "" then return true end
   return va.pre < vb.pre
+end
+
+function M.only_cached_mode()
+  return os.getenv("MISE_NIX_ONLY_CACHED") == "1"
 end
 
 return M
