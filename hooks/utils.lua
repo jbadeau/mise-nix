@@ -1,3 +1,5 @@
+-- utils.lua
+
 local M = {}
 
 function M.normalize_os(os)
@@ -18,16 +20,21 @@ function M.is_compatible(summary, os, arch)
 end
 
 function M.is_valid_version(version)
-  if type(version) ~= "string" or version == "" then
-    return false
-  end
-  return version:match("^[%w%.%-]+$") ~= nil
+  return version and version ~= "" and version:match("^[%w%.%-]+$")
+end
+
+function M.get_nixhub_base_url()
+  return os.getenv("MISE_NIX_NIXHUB_BASE_URL") or "https://www.nixhub.io"
+end
+
+function M.get_nixpkgs_repo_url()
+  return os.getenv("MISE_NIX_NIXPKGS_REPO_URL") or "https://github.com/NixOS/nixpkgs"
 end
 
 function M.fetch_tool_metadata(tool)
   local cmd = require("cmd")
   local json = require("json")
-  local url = "https://www.nixhub.io/packages/" .. tool .. "?_data=routes%2F_nixhub.packages.%24pkg._index"
+  local url = M.get_nixhub_base_url() .. "/packages/" .. tool .. "?_data=routes%2F_nixhub.packages.%24pkg._index"
   local response = cmd.exec("curl -sL \"" .. url .. "\"")
   local success, data = pcall(json.decode, response)
   return success, data, response
@@ -60,10 +67,6 @@ function M.semver_less_than(a, b)
   if va.pre == "" and vb.pre ~= "" then return false end
   if va.pre ~= "" and vb.pre == "" then return true end
   return va.pre < vb.pre
-end
-
-function M.only_cached_mode()
-  return os.getenv("MISE_NIX_ONLY_CACHED") == "1"
 end
 
 return M
