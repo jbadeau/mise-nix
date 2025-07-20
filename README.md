@@ -1,4 +1,4 @@
-# `mise-nix`: Seamless Nix Package Management for Mise
+# `mise-nix`
 
 `mise-nix` is a backend plugin for [mise](https://github.com/jdx/mise) that allows you to effortlessly install and manage development tools using [Nix](https://nixos.org/).
 This combines the flexibility of Nix with the simplicity of `mise`'s environment management.
