@@ -5,7 +5,7 @@ packages using [Nix](https://nixos.org/).
 
 ---
 
-## Why Use `mise-nix`?
+## Why
 
 Nix is a powerful package manager that provides reproducible and declarative builds. However, it can be complex to 
 integrate into daily workflows. `mise-nix` bridges this gap by offering:
@@ -27,7 +27,7 @@ Before you get started, make sure you have:
 
 ---
 
-## Nix Configuration
+### Nix Configuration
 
 To use `mise-nix`, your Nix setup must support the following experimental features. Add these lines to your Nix 
 configuration file, typically located at `/etc/nix/nix.conf`:
