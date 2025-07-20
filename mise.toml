@@ -1,6 +1,6 @@
 [tools]
 lua = "latest"
-"nix:helmfile" = "latest"
+"nix:nodejs" = "23.6.0"
 
 [tasks.init]
 description = "Init"

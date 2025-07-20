@@ -1,6 +1,8 @@
+local utils = require("utils")
+
 function PLUGIN:BackendInstall(ctx)
   local cmd = require("cmd")
-  local utils = require("utils")
+  local json = require("json")
 
   local tool = ctx.tool
   local requested_version = ctx.version
@@ -13,7 +15,7 @@ function PLUGIN:BackendInstall(ctx)
   utils.validate_tool_metadata(success, data, tool, response)
 
   local compatible = {}
-  for _, release in ipairs(data.releases or {}) do
+  for _, release in ipairs(data.releases) do
     if utils.is_compatible(release.platforms_summary, current_os, current_arch) then
       table.insert(compatible, release)
     end
@@ -24,7 +26,7 @@ function PLUGIN:BackendInstall(ctx)
   end
 
   table.sort(compatible, function(a, b)
-    return utils.semver_less_than(b.version, a.version)  -- sort descending
+    return utils.semver_less_than(b.version, a.version) -- descending
   end)
 
   local target_release = nil
@@ -47,13 +49,20 @@ function PLUGIN:BackendInstall(ctx)
     error("No platform build found for version " .. target_release.version)
   end
 
+  local only_cached = os.getenv("MISE_NIX_ONLY_CACHED") == "1"
+
   local ref = string.format("github:NixOS/nixpkgs/%s#%s", platform.commit_hash, platform.attribute_path)
   local cmdline = string.format("nix build --no-link --print-out-paths " ..
     "--extra-experimental-features nix-command " ..
     "--extra-experimental-features flakes '%s'", ref)
 
+  if only_cached then
+    cmdline = cmdline .. " --max-jobs 0"
+  end
+
   local result = cmd.exec(cmdline)
   local store_path = result:match("^([^\n]+)")
+
   if not store_path then
     error("Failed to parse nix build output")
   end
