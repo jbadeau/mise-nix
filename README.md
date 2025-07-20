@@ -12,8 +12,10 @@ it easy to:
 
 * **Access thousands of packages:** Browse available packages on [NixHub](https://www.nixhub.io/).
 * **Ensure reproducible environments:** Benefit from Nix's robust dependency management.
-* **Simplify package installation:** Use familiar `mise` commands for Nix-based installations.
-
+* **Simplify package installation:** Use familiar `mise` commands for Nix-based installations. 
+* **Great DX:** While there are many Nix frontends available, I personally enjoy the developer 
+  experience that `mise` provides. It gives me a single, consistent frontend to manage not only my tools and packages, 
+  but also environment variables.
 ---
 
 ## Prerequisites
