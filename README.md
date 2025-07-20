@@ -1,62 +1,56 @@
-# mise-nix
+# `mise-nix`
 
-`mise-nix` is a backend plugin for [mise](https://github.com/jdx/mise) that allows you to easily install and manage 
-development package using [Nix](https://nixos.org/).
+`mise-nix` is a backend plugin for [mise](https://github.com/jdx/mise) that allows you to install and manage development
+packages using [Nix](https://nixos.org/).
 
 ---
 
-## Why Use?
+## Why Use `mise-nix`?
 
-Leverage Nix's vast package collection and reproducible builds directly within your `mise` workflows. This plugin makes 
-it easy to:
+Nix is a powerful package manager that provides reproducible and declarative builds. However, it can be complex to 
+integrate into daily workflows. `mise-nix` bridges this gap by offering:
 
-* **Access thousands of packages:** Browse available packages on [NixHub](https://www.nixhub.io/).
-* **Ensure reproducible environments:** Benefit from Nix's robust dependency management.
-* **Simplify package installation:** Use familiar `mise` commands for Nix-based installations. 
-* **Great DX:** While there are many Nix frontends available, I personally enjoy the developer 
-  experience that `mise` provides. It gives me a single, consistent frontend to manage not only my tools and packages, 
-  but also environment variables and tasks.
+* **Access to thousands of packages:** Easily browse available tools on [NixHub](https://www.nixhub.io/).
+* **Reproducible environments:** Ensure consistency across machines with Nix’s robust dependency management.
+* **Simple, intuitive CLI:** Leverage the familiar `mise` commands to install and manage tools using Nix.
+* **Unified developer workflow:** Rather than juggling multiple tools, `mise` provides a single frontend for managing tools, versions, environment variables, and tasks.
+* **Great DX (Developer Experience):** While there are many frontends for Nix, `mise` offers a performant and consistent interface that’s easy to adopt and pleasant to use.
+
 ---
 
 ## Prerequisites
 
 Before you get started, make sure you have:
 
-* **[Mise](https://github.com/jdx/mise)**: Your primary tool manager.
-* **[Nix](https://nixos.org/)**: The package manager powering this plugin.
+* **[Mise](https://github.com/jdx/mise)**
+* **[Nix](https://nixos.org/)**
 
 ---
 
 ## Nix Configuration
 
-For `mise-nix` to function correctly, you'll need to enable specific experimental features in your Nix configuration 
-file, typically located at `/etc/nix/nix.conf`.
-
-Add the following lines:
+To use `mise-nix`, your Nix setup must support the following experimental features. Add these lines to your Nix 
+configuration file, typically located at `/etc/nix/nix.conf`:
 
 ```ini
 experimental-features = nix-command flakes
 substitute = true
 ```
 
-### Airgapped or Restricted Environments
-If you operate in a restricted environment and need to strictly prevent local builds, you can 
-optionally add:
+### Optional: Airgapped or Restricted Environments
+If you want to avoid all local builds (e.g., in CI or restricted environments), add:
 
 ```ini
 max-jobs = 0
 ```
 
-**Important:** Setting `max-jobs = 0` will disable all local builds.
-Installations will only succeed if the requested tools are available in your configured binary caches 
-(e.g., https://cache.nixos.org or any Cachix cache you rely on). If a binary isn't found in your caches, the 
-installation will fail.
+**Note:** With `max-jobs = 0`, Nix will fail if it cannot find the requested tool in your binary caches.
 
 ---
 
 ## Installation
 
-Install the `mise-nix` plugin with a single command:
+Install the plugin:
 
 ```sh
 mise plugin install nix https://github.com/jbadeau/mise-nix.git
@@ -67,40 +61,30 @@ mise plugin install nix https://github.com/jbadeau/mise-nix.git
 ## Usage
 
 ### List Available Versions
-List which versions of a package are available for your platform:
 
 ```sh
 mise ls-remote nix:helmfile
 ```
 
 ### Install a Specific Version
-Install a desired version of a package:
 
 ```sh
 mise install nix:helmfile@1.1.2
 ```
 
-Install the latest available version:
+Install the latest version:
 
 ```sh
 mise install nix:helmfile
 ```
 
 ### Use in a Project
-Specify the tool version for your project, often done within a `mise.toml` file:
-
-```sh
-mise use nix:helmfile@1.1.2
-```
-
-Use the latest available version:
 
 ```sh
 mise use nix:helmfile@1.1.2
 ```
 
 ### Run the Tool
-Execute a Nix-installed tool:
 
 ```sh
 mise exec -- helmfile --version
@@ -110,39 +94,32 @@ mise exec -- helmfile --version
 
 ## Environment Variables from Nix
 
-Nix often exposes important environment variables (e.g., `JAVA_HOME` for JDKs) when tools are used via `nix-shell` or 
-`nix develop`. However, these environment variables are **not automatically set** when you use the `mise-nix` plugin.
+Nix packages often expose environment variables like `JAVA_HOME` via `nix-shell` or `nix develop`. However, these variables are **not automatically set** by `mise-nix`.
 
-### Example Scenario
+### Example: JDK
 
-If you install JDK using Nix, `nix-shell` might show:
-
+Using `nix-shell`:
 ```sh
 echo $JAVA_HOME
 # /nix/store/<hash>-openjdk-<version>/lib/openjdk
 ```
 
-But when using `mise-nix`:
-
+Using `mise-nix`:
 ```sh
 mise exec -- java -version
-# Executes Java successfully
-
+# Works, but...
 echo $JAVA_HOME
-# Will likely be empty or unchanged
+# Likely empty or unchanged
 ```
 
-### Manual Configuration Required
-
-If your environment depends on these specific variables, you'll need to configure them manually. For 
-instance, to set `JAVA_HOME`:
+### Manual Configuration
+If your workflow depends on such variables, set them manually:
 
 ```sh
 export JAVA_HOME="$(mise which java | sed 's|/bin/java||')"
 ```
 
-**Future Improvement:** We aim to add automatic parsing of environment variables from Nix derivations in a future 
-update, but for now, manual configuration is necessary.
+*Future improvement: Automatic parsing of Nix derivation environment variables is on the roadmap.*
 
 ---
 
@@ -156,10 +133,10 @@ mise init
 
 ### Running Tests
 
-To ensure everything is working as expected, run the test suite:
+Run the test suite to verify plugin functionality:
 
 ```sh
 lua test_utils.lua
 ```
 
-All tests should pass. If you modify utility functions, remember to update and rerun the test suite accordingly.
+Ensure all tests pass. If you make changes to utility functions or logic, be sure to update and rerun tests accordingly.
