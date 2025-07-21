@@ -39,7 +39,7 @@ experimental-features = nix-command flakes
 substitute = true
 ```
 
-### Optional: Airgapped or Restricted Environments
+### Optional: Restricted Environments
 If you want to avoid all local builds (e.g., in CI or restricted environments), add:
 
 ```ini
