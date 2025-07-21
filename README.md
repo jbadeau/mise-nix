@@ -1,6 +1,6 @@
 # `mise-nix`
 
-`mise-nix` is a backend plugin for [mise](https://github.com/jdx/mise) that allows you to install and manage development
+`mise-nix` is a backend plugin for [mise](https://github.com/jdx/mise) that allows you to install and manage
 packages using [Nix](https://nixos.org/).
 
 ---
@@ -15,7 +15,7 @@ Nix offers a powerful, reproducible package system — but integrating it smooth
 `mise-nix` brings the best of both worlds:
 - Access thousands of reproducible Nix packages from [NixHub](https://www.nixhub.io/)
 - Use familiar `mise` commands to install and manage tools without writing `shell.nix` or `flake.nix`
-- Integrate environment variables, tool versions, and tasks in a single, declarative config
+- Integrate environment variables, tool versions, and tasks into a single, performant, and declarative configuration.
 - Avoid the learning curve of traditional Nix usage while still benefiting from its features 
 
 ---
