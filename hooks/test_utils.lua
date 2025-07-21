@@ -63,4 +63,4 @@ print("🔧 Testing env var MISE_NIX_ONLY_CACHED...")
 local env = os.getenv("MISE_NIX_ONLY_CACHED")
 assert_eq(env == "1" or env == nil, true)
 
-print("✅ All tests passed successfully.")
+print("All tests passed successfully.")

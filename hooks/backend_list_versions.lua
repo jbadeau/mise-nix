@@ -1,6 +1,5 @@
 function PLUGIN:BackendListVersions(ctx)
   local utils = require("utils")
-
   local tool = ctx.tool
   if not tool or tool == "" then
     error("Tool name cannot be empty")
