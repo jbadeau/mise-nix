@@ -27,7 +27,7 @@ function M.get_nixhub_base_url()
 end
 
 function M.get_nixpkgs_repo_url()
-  return os.getenv("MISE_NIX_NIXPKGS_REPO_URL") or "https://github.com/NixOS/nixpkgs"
+  return os.getenv("MISE_NIX_NIXPKGS_REPO_URL") or "github:NixOS/nixpkgs"
 end
 
 function M.fetch_tool_metadata(tool)

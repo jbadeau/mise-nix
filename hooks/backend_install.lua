@@ -43,7 +43,8 @@ function PLUGIN:BackendInstall(ctx)
     error("No platform build found for version " .. target_release.version)
   end
 
-  local ref = string.format("github:NixOS/nixpkgs/%s#%s", platform.commit_hash, platform.attribute_path)
+  local nixpkgs_repo = utils.get_nixpkgs_repo_url()
+  local ref = string.format("%s/%s#%s", nixpkgs_repo, platform.commit_hash, platform.attribute_path)
   local cmdline = string.format("nix build --no-link --print-out-paths '%s'", ref)
 
   local result = cmd.exec(cmdline)
