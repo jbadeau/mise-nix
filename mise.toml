@@ -1,6 +1,5 @@
 [tools]
 lua = "latest"
-"nix:nodejs" = "21.6.2"
 
 [tasks.init]
 description = "Init"
