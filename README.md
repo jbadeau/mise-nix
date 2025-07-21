@@ -1,6 +1,6 @@
 # `mise-nix`
 
-`mise-nix` is a backend plugin for [mise](https://github.com/jdx/mise) that allows you to install and manage
+`mise-nix` is a backend plugin for [Mise](https://github.com/jdx/mise) that allows you to install and manage
 packages using [Nix](https://nixos.org/).
 
 ---
