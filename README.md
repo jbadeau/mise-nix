@@ -12,7 +12,7 @@ Nix is incredibly powerful for creating reproducible development environments, b
 
 **Simplified Nix Access**: Get instant access to thousands of reproducible Nix packages from NixHub without needing to write intricate shell.nix or flake.nix files.
 
-**Familiar Workflow**: Leverage intuitive mise commands to install and manage your tools, making environment setup straightforward and efficient.
+**Familiar Workflow**: Leverage intuitive mise commands to install and manage your packages, making environment setup straightforward and efficient.
 
 **Streamlined Configuration**: Consolidate environment variables, package versions, and development tasks into a single, declarative, and highly performant configuration.
 
