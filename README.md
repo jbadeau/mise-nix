@@ -5,7 +5,7 @@ packages using [Nix](https://nixos.org/).
 
 ---
 
-## Why Choose mise-nix?
+## Why use mise-nix?
 Nix is incredibly powerful for creating reproducible development environments, but its steep learning curve and complex configuration often deter users. Similarly, tools like direnv offer flexibility for project-specific environments, but can slow down your shell.
 
 `mise-nix` bridges this gap, offering the best of both worlds:
@@ -29,7 +29,7 @@ Before you get started, make sure you have installed:
 
 ---
 
-### Nix Configuration
+### Nix configuration
 
 To use `mise-nix`, your Nix setup must support the following experimental features. Add these lines to your Nix 
 configuration file, typically located at `/etc/nix/nix.conf`:
@@ -39,7 +39,7 @@ experimental-features = nix-command flakes
 substitute = true
 ```
 
-### Optional: Restricted Environments
+### Optional: Restricted environments
 If you want to avoid all local builds (e.g., in CI or restricted environments), add:
 
 ```ini
@@ -94,7 +94,7 @@ mise exec -- helmfile --version
 
 ---
 
-## Environment Variables from Nix
+## Environment variables from Nix
 
 Nix packages often expose environment variables like `JAVA_HOME` via `nix-shell` or `nix develop`. However, these variables are **not automatically set** by `mise-nix`.
 
@@ -114,7 +114,7 @@ echo $JAVA_HOME
 # Likely empty or unchanged
 ```
 
-### Manual Configuration
+### Manual configuration
 If your workflow depends on such variables, set them manually:
 
 ```sh
@@ -133,7 +133,7 @@ export JAVA_HOME="$(mise which java | sed 's|/bin/java||')"
 mise init
 ```
 
-### Running Tests
+### Running tests
 
 Run the test suite to verify plugin functionality:
 
