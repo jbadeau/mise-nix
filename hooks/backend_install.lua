@@ -44,17 +44,27 @@ function PLUGIN:BackendInstall(ctx)
   end
 
   local nixpkgs_repo = utils.get_nixpkgs_repo_url()
-  local ref = string.format("%s/%s#%s", nixpkgs_repo, platform.commit_hash, platform.attribute_path)
+  local ref = string.format("github:NixOS/nixpkgs/%s#%s", platform.commit_hash, platform.attribute_path)
   local cmdline = string.format("nix build --no-link --print-out-paths '%s'", ref)
 
   local result = cmd.exec(cmdline)
-  local store_path = result:match("^([^\n]+)")
-  if not store_path then
-    error("Failed to parse nix build output")
+  local outputs = {}
+  for path in result:gmatch("[^\n]+") do
+    table.insert(outputs, path)
+  end
+
+  if #outputs == 0 then
+    error("No outputs returned by nix build")
+  end
+
+  local chosen_path, has_bin = utils.choose_store_path_with_bin(outputs)
+  if not has_bin then
+    print("⚠️  No bin/ directory found. This package may be a library.")
+    print("ℹ️  Falling back to the first available output for linking or use in build environments.")
   end
 
   cmd.exec(string.format('rm -rf "%s"', install_path))
-  cmd.exec(string.format('ln -sfn "%s" "%s"', store_path, install_path))
+  cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, install_path))
 
   return {}
 end

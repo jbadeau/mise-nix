@@ -27,7 +27,7 @@ function M.get_nixhub_base_url()
 end
 
 function M.get_nixpkgs_repo_url()
-  return os.getenv("MISE_NIX_NIXPKGS_REPO_URL") or "github:NixOS/nixpkgs"
+  return os.getenv("MISE_NIX_NIXPKGS_REPO_URL") or "https://github.com/NixOS/nixpkgs"
 end
 
 function M.fetch_tool_metadata(tool)
@@ -76,6 +76,18 @@ function M.filter_compatible_versions(releases, os, arch)
     end
   end
   return filtered
+end
+
+function M.choose_store_path_with_bin(outputs)
+  local cmd = require("cmd")
+  for _, path in ipairs(outputs) do
+    local bin_path = path .. "/bin"
+    local stat = cmd.exec("test -d '" .. bin_path .. "' && echo yes || echo no")
+    if stat:match("yes") then
+      return path, true
+    end
+  end
+  return outputs[1], false
 end
 
 return M

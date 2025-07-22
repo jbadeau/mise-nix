@@ -1,5 +1,5 @@
 [tools]
-lua = "latest"
+lua = "5.4.7"
 
 [tasks.init]
 description = "Init"
