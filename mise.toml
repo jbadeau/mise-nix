@@ -1,6 +1,24 @@
+[env]
+LUA_PATH="lib/?.lua;;"
+
 [tools]
 lua = "5.4.7"
 
 [tasks.init]
-description = "Init"
-run = "mise plugin link nix $PWD --force"
+description = "init"
+run = [
+    'mise plugin link nix $PWD --force',
+    'luarocks install busted'
+]
+
+[tasks.test]
+description = "test"
+run = "busted -p %.spec%.lua lib"
+
+[tasks.e2e]
+description = "e2e"
+run = "./test/test.sh"
+
+[tasks.release]
+description = "release"
+run = "nx release"
