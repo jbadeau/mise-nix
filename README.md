@@ -183,18 +183,23 @@ export JAVA_HOME="$(mise which java | sed 's|/bin/java||')"
 
 ## Development
 
-### Initialize the Plugin
+### Link the plugin
 
 ```sh
 mise init
 ```
 
-### Running tests
+### Run unit tests
 
-Run the test suite to verify plugin functionality:
+unit
+```sh
+mise test
+```
+
+### Run e2e tests
 
 ```sh
-lua test_utils.lua
+mise e2e
 ```
 
 Ensure all tests pass. If you make changes to utility functions or logic, be sure to update and rerun tests accordingly.
