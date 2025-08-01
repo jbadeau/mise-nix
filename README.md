@@ -47,35 +47,35 @@ mise plugin install nix https://github.com/jbadeau/mise-nix.git
 
 ## Usage
 
-### List Available Versions
+### List available versions
 
 ```sh
 mise ls-remote nix:helmfile
 ```
 
-### Install a Specific Version
+### Install a specific version
 
 ```sh
 mise install nix:helmfile@1.1.2
 ```
 
-### Use in a Project
+### Use in a project
 
 ```sh
 mise use nix:helmfile@1.1.2
 ```
 
-### Run the Tool
+### Run the tool
 
 ```sh
-mise exec -- helmfile --version
+mise exec nix:helmfile@1.1.2 -- helmfile version
 ```
 
 ---
 
-## Advanced Features
+## Advanced features
 
-### Version Aliases
+### Version aliases
 
 `mise-nix` supports several version aliases for convenience:
 
@@ -90,7 +90,7 @@ mise install nix:go@stable
 mise install nix:go@latest
 ```
 
-### Caching and Performance
+### Caching and performance
 
 The plugin automatically caches package metadata from NixHub for improved performance:
 
@@ -106,7 +106,7 @@ rm ~/.cache/mise-nix/helmfile.json
 rm -rf ~/.cache/mise-nix/
 ```
 
-### Environment Variables
+### Environment variables
 
 You can customize the plugin behavior using environment variables:
 
@@ -147,13 +147,9 @@ If your workflow depends on such variables, set them manually:
 export JAVA_HOME="$(mise which java | sed 's|/bin/java||')"
 ```
 
-*Future improvement: Automatic parsing of Nix derivation environment variables is on the roadmap.*
-
----
-
 ## Troubleshooting
 
-### Common Issues
+### Common issues
 
 **"Nix is not installed or not in PATH"**
 - Ensure Nix is properly installed and available in your shell
@@ -173,7 +169,7 @@ export JAVA_HOME="$(mise which java | sed 's|/bin/java||')"
 - Check that your Nix binary caches are accessible
 - Consider setting `max-jobs = 0` if builds are failing in restricted environments
 
-### Performance Tips
+### Performance tips
 
 - Package metadata is cached for 1 hour to improve performance
 - Large packages may take time to build - consider using binary caches
@@ -183,7 +179,7 @@ export JAVA_HOME="$(mise which java | sed 's|/bin/java||')"
 
 ## Development
 
-### Link the plugin
+### init the plugin
 
 ```sh
 mise init
