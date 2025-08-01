@@ -18,7 +18,3 @@ run = "busted -p %.spec%.lua lib"
 [tasks.e2e]
 description = "e2e"
 run = "./test/test.sh"
-
-[tasks.release]
-description = "release"
-run = "nx release"
