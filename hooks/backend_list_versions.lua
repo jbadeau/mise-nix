@@ -1,20 +1,21 @@
 function PLUGIN:BackendListVersions(ctx)
-  local utils = require("utils")
+  local helper = require("helper")
   local tool = ctx.tool
   if not tool or tool == "" then
     error("Tool name cannot be empty")
   end
 
-  local current_os = utils.normalize_os(RUNTIME.osType)
+  local current_os = helper.normalize_os(RUNTIME.osType)
   local current_arch = RUNTIME.archType:lower()
 
-  local success, data, response = utils.fetch_tool_metadata(tool)
-  utils.validate_tool_metadata(success, data, tool, response)
+  -- Use cached metadata for better performance
+  local success, data, response = helper.fetch_tool_metadata_cached(tool, 3600) -- 1 hour cache
+  helper.validate_tool_metadata(success, data, tool, response)
 
   local versions = {}
   for _, release in ipairs(data.releases) do
     local version = release.version
-    if utils.is_valid_version(version) and utils.is_compatible(release.platforms_summary, current_os, current_arch) then
+    if helper.is_valid_version(version) and helper.is_compatible(release.platforms_summary, current_os, current_arch) then
       table.insert(versions, version)
     end
   end
@@ -23,7 +24,7 @@ function PLUGIN:BackendListVersions(ctx)
     error("No compatible versions found for " .. tool .. " on " .. current_os .. " (" .. current_arch .. ")")
   end
 
-  table.sort(versions, utils.semver_less_than)
+  table.sort(versions, helper.semver_less_than)
 
   return { versions = versions }
 end

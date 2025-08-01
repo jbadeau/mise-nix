@@ -5,21 +5,6 @@ packages using [Nix](https://nixos.org/).
 
 ---
 
-## Why use mise-nix?
-Nix is incredibly powerful for creating reproducible development environments, but its steep learning curve and complex configuration often deter users. Similarly, tools like direnv offer flexibility for project-specific environments, but can slow down your shell.
-
-`mise-nix` bridges this gap, offering the best of both worlds:
-
-**Simplified Nix Access**: Get instant access to thousands of reproducible Nix packages from NixHub without needing to write intricate shell.nix or flake.nix files.
-
-**Familiar Workflow**: Leverage intuitive mise commands to install and manage your packages, making environment setup straightforward and efficient.
-
-**Streamlined Configuration**: Consolidate environment variables, package versions, and development tasks into a single, declarative, and highly performant configuration.
-
-**Accelerated Productivity**: Bypass the complexities of traditional Nix usage while still harnessing its robust features for reliable and consistent development environments.
-
----
-
 ## Prerequisites
 
 Before you get started, make sure you have installed:
@@ -31,12 +16,12 @@ Before you get started, make sure you have installed:
 
 ### Nix configuration
 
-To use `mise-nix`, your Nix setup must support the following experimental features. Add these lines to your Nix 
+To use `mise-nix`, your Nix setup must support the following experimental features. Add these lines to your Nix
 configuration file, typically located at `/etc/nix/nix.conf`:
 
 ```ini
 experimental-features = nix-command flakes
-substitute = true
+substitutes = true
 ```
 
 ### Optional: Restricted environments
@@ -74,12 +59,6 @@ mise ls-remote nix:helmfile
 mise install nix:helmfile@1.1.2
 ```
 
-Install the latest version:
-
-```sh
-mise install nix:helmfile
-```
-
 ### Use in a Project
 
 ```sh
@@ -90,6 +69,53 @@ mise use nix:helmfile@1.1.2
 
 ```sh
 mise exec -- helmfile --version
+```
+
+---
+
+## Advanced Features
+
+### Version Aliases
+
+`mise-nix` supports several version aliases for convenience:
+
+- `latest` - The most recent version available (including prereleases)
+- `stable` - The most recent stable version (excluding alpha, beta, rc, etc.)
+
+```sh
+# Install latest stable version
+mise install nix:go@stable
+
+# Install absolute latest (may include prereleases)
+mise install nix:go@latest
+```
+
+### Caching and Performance
+
+The plugin automatically caches package metadata from NixHub for improved performance:
+
+- **Cache duration**: 1 hour by default
+- **Cache location**: `~/.cache/mise-nix/`
+- **Manual cache refresh**: Delete cache files or wait for expiration
+
+```sh
+# Clear cache for a specific tool
+rm ~/.cache/mise-nix/helmfile.json
+
+# Clear all cached metadata
+rm -rf ~/.cache/mise-nix/
+```
+
+### Environment Variables
+
+You can customize the plugin behavior using environment variables:
+
+```sh
+# Use a different NixHub instance
+export MISE_NIX_NIXHUB_BASE_URL="https://custom-nixhub.example.com"
+
+# Use a different nixpkgs repository
+export MISE_NIX_NIXPKGS_REPO_URL="https://github.com/MyOrg/nixpkgs"
 ```
 
 ---
@@ -125,6 +151,36 @@ export JAVA_HOME="$(mise which java | sed 's|/bin/java||')"
 
 ---
 
+## Troubleshooting
+
+### Common Issues
+
+**"Nix is not installed or not in PATH"**
+- Ensure Nix is properly installed and available in your shell
+- Try running `nix --version` to verify installation
+
+**"Tool not found or missing releases"**
+- The package may not be available on NixHub
+- Check [NixHub](https://www.nixhub.io) to verify the package exists
+- Ensure you're using the correct package name
+
+**"No compatible versions found"**
+- The package may not support your operating system or architecture
+- Check the package's platform compatibility on NixHub
+
+**Build failures**
+- Ensure you have the required Nix experimental features enabled
+- Check that your Nix binary caches are accessible
+- Consider setting `max-jobs = 0` if builds are failing in restricted environments
+
+### Performance Tips
+
+- Package metadata is cached for 1 hour to improve performance
+- Large packages may take time to build - consider using binary caches
+- Use `stable` version alias for more predictable builds
+
+---
+
 ## Development
 
 ### Initialize the Plugin
@@ -142,3 +198,12 @@ lua test_utils.lua
 ```
 
 Ensure all tests pass. If you make changes to utility functions or logic, be sure to update and rerun tests accordingly.
+
+### Contributing
+
+When contributing:
+
+1. Ensure all utility functions are tested
+2. Run the test suite before submitting changes
+3. Follow the existing code style and patterns
+4. Update documentation for new features

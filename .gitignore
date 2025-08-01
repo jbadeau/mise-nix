@@ -1,1 +1,18 @@
-/.idea/
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+test/tmp/
+test/output/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+*.log
