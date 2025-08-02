@@ -3,6 +3,7 @@ LUA_PATH="lib/?.lua;;"
 
 [tools]
 lua = "5.4.7"
+node = "20.19.4"
 
 [tasks.init]
 description = "init"
@@ -17,4 +18,4 @@ run = "busted -p %.spec%.lua lib"
 
 [tasks.e2e]
 description = "e2e"
-run = "./test/test.sh"
+run = "bats test/flake.bats"
