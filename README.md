@@ -409,7 +409,7 @@ Run end-to-end integration tests using BATS:
 mise e2e
 ```
 
-The e2e tests cover all major functionality including:
+The e2e tests (in `test/e2e.bats`) cover all major functionality including:
 - Traditional NixHub package installation and execution
 - Flake reference patterns (as versions and direct references)
 - Security features for local flakes
