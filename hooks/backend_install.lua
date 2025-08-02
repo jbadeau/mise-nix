@@ -31,23 +31,14 @@ local function resolve_version_alias(requested_version, compatible)
   end
 end
 
-function PLUGIN:BackendInstall(ctx)
-  local tool = ctx.tool
-  local requested_version = ctx.version
-  local install_path = ctx.install_path
-
-  -- Check if Nix is available early
-  helper.check_nix_available()
-
+local function install_from_nixhub(tool, requested_version, install_path)
   local current_os = helper.normalize_os(RUNTIME.osType)
   local current_arch = RUNTIME.archType:lower()
 
-  -- Use cached metadata for better performance
-  local success, data, response = helper.fetch_tool_metadata_cached(tool, 3600) -- 1 hour cache
+  local success, data, response = helper.fetch_tool_metadata_cached(tool, 3600)
   helper.validate_tool_metadata(success, data, tool, response)
 
   local compatible = helper.filter_compatible_versions(data.releases, current_os, current_arch)
-
   if #compatible == 0 then
     error("No compatible versions found for " .. tool .. " on " .. current_os .. " (" .. current_arch .. ")")
   end
@@ -57,7 +48,6 @@ function PLUGIN:BackendInstall(ctx)
   end)
 
   local target_release = resolve_version_alias(requested_version, compatible)
-
   if not target_release then
     error("Requested version not found or not compatible: " .. requested_version)
   end
@@ -67,7 +57,6 @@ function PLUGIN:BackendInstall(ctx)
     error("No platform build found for version " .. target_release.version)
   end
 
-  local nixpkgs_repo = helper.get_nixpkgs_repo_url()
   local ref = string.format("github:NixOS/nixpkgs/%s#%s", platform.commit_hash, platform.attribute_path)
   local cmdline = string.format("nix build --no-link --print-out-paths '%s'", ref)
 
@@ -88,12 +77,56 @@ function PLUGIN:BackendInstall(ctx)
     print("ℹ️  Falling back to the first available output for linking or use in build environments.")
   end
 
-  -- Verify the build before installing
   helper.verify_build(chosen_path, tool)
 
+  -- Remove any existing directory/symlink before creating new symlink
   cmd.exec(string.format('rm -rf "%s"', install_path))
   cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, install_path))
 
   print("✅ Successfully installed " .. tool .. "@" .. target_release.version)
-  return {}
+  return target_release.version
+end
+
+local function install_from_flake(flake_ref, version, install_path)
+  local outputs, built_ref = helper.build_flake(flake_ref, version)
+
+  local chosen_path, has_bin = helper.choose_store_path_with_bin(outputs)
+  if not has_bin then
+    print("⚠️  No binaries found. This package may be a library.")
+    print("ℹ️  Falling back to the first available output for linking or use in build environments.")
+  end
+
+  helper.verify_build(chosen_path, flake_ref)
+
+  -- Remove any existing directory/symlink before creating new symlink
+  cmd.exec(string.format('rm -rf "%s"', install_path))
+  cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, install_path))
+
+  print("✅ Successfully installed " .. built_ref)
+  return flake_ref
+end
+
+function PLUGIN:BackendInstall(ctx)
+  local tool = ctx.tool
+  local requested_version = ctx.version
+  local install_path = ctx.install_path
+
+  helper.check_nix_available()
+
+  -- Check if either the tool or version is a flake reference
+  -- If ctx.tool is a flake reference, we treat ctx.version as the specific version/commit for that flake
+  -- If ctx.version is a flake reference (like "owner/repo#package"), we use that as the complete flake reference
+  -- Otherwise, ctx.version is a traditional version string for nixhub.io
+  if helper.is_flake_reference(tool) then
+    local version = install_from_flake(tool, requested_version, install_path)
+    return { version = version }
+  elseif helper.is_flake_reference(requested_version) then
+    -- The version itself is a flake reference (e.g., "nix-community/emacs-overlay#emacs-git")
+    local version = install_from_flake(requested_version, "", install_path)
+    return { version = version }
+  else
+    local version = install_from_nixhub(tool, requested_version, install_path)
+    return { version = version }
+  end
+
 end
