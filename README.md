@@ -38,7 +38,9 @@ mise plugin install nix https://github.com/jbadeau/mise-nix.git
 
 ## Usage
 
-### Traditional package installation (via NixHub)
+### 1. Traditional NixHub Packages
+
+Perfect for well-known tools with curated versions:
 
 #### List available versions
 
@@ -46,57 +48,59 @@ mise plugin install nix https://github.com/jbadeau/mise-nix.git
 mise ls-remote nix:helmfile
 ```
 
-#### Install a specific version
+#### Install and use
 
 ```sh
+# Install specific version
 mise install nix:helmfile@1.1.2
-```
+mise exec nix:helmfile@1.1.2 -- helmfile version
 
-#### Use in a project
+# Install with version aliases
+mise install nix:helmfile@stable   # Latest stable version
+mise install nix:helmfile@latest   # Absolute latest (may include prereleases)
+mise install nix:helmfile          # Latest by default
 
-```sh
+# Use in a project
 mise use nix:helmfile@1.1.2
 ```
 
-#### Run the tool
+### 2. Flake References as Versions (Recommended)
+
+This approach provides the best of both worlds - organized tool names with flexible flake sources:
 
 ```sh
-mise exec nix:helmfile@1.1.2 -- helmfile version
+# GitHub shorthand (recommended - clean and simple)
+mise install nix:hello@nixos/nixpkgs#hello
+mise exec nix:hello@nixos/nixpkgs#hello -- hello
+
+# Tools from community overlays
+mise install nix:emacs@nix-community/emacs-overlay#emacs-git
+mise exec nix:emacs@nix-community/emacs-overlay#emacs-git -- emacs --version
+
+# Use in projects
+mise use nix:hello@nixos/nixpkgs#hello
+mise use nix:ripgrep@nixpkgs#ripgrep
 ```
 
-#### Version aliases
+### 3. Direct Flake References as Tool Names
 
-`mise-nix` supports several version aliases for convenience with NixHub packages:
-
-- `latest` - The most recent version available (including prereleases)
-- `stable` - The most recent stable version (excluding alpha, beta, rc, etc.)
-
-```sh
-# Install latest stable version
-mise install nix:go@stable
-
-# Install absolute latest (may include prereleases)
-mise install nix:go@latest
-```
-
-**Note:** Version aliases work with traditional NixHub packages. For flake references, use specific revisions or branches in the flake URL itself.
-
-### Flake reference installation
-
-`mise-nix` also supports installing packages directly from Nix flakes using various reference formats:
-
-#### GitHub repositories
+Use the flake reference directly as the tool identifier:
 
 ```sh
 # GitHub shorthand
-mise install "nix:nix-community/emacs-overlay#emacs-git"
+mise install nix:nixos/nixpkgs#hello
+mise exec nix:nixos/nixpkgs#hello -- hello
 
 # Full GitHub reference
-mise install "nix:github:nixos/nixpkgs#hello"
+mise install nix:github:nixos/nixpkgs#hello
+mise exec nix:github:nixos/nixpkgs#hello -- hello
 
-# With specific revision/branch
-mise install "nix:github:nixos/nixpkgs/abc123#hello"
+# nixpkgs shorthand
+mise install nix:nixpkgs#fd
+mise exec nix:nixpkgs#fd -- fd --version
 ```
+
+### 4. Advanced Flake References
 
 #### Git repositories
 
@@ -124,44 +128,36 @@ mise install "nix:./my-flake#package"
 mise install "nix:/absolute/path/flake#tool"
 ```
 
-**Security note:** Local flakes are disabled by default for security reasons. To enable local flake support, set the environment variable:
+**Security note:** Local flakes are disabled by default. Enable with:
 
 ```sh
 export MISE_NIX_ALLOW_LOCAL_FLAKES=true
 ```
 
-When enabled, local flakes are restricted to safe paths within the current working directory to prevent access to sensitive system directories.
-
-#### Flake reference as version
-
-You can also specify a flake reference as the version, which allows for more flexible package management:
+### Version Listing
 
 ```sh
-# Install with flake reference as version
-mise install "nix:hello@nixos/nixpkgs#hello"
-mise install "nix:emacs@nix-community/emacs-overlay#emacs-git"
+# Traditional packages - full version history
+mise ls-remote nix:helmfile
 
-# Use in a project with flake reference version
-mise use "nix:hello@github:nixos/nixpkgs#hello"
-
-# Run with flake reference version
-mise exec "nix:emacs@nix-community/emacs-overlay#emacs-git" -- emacs --version
+# Flake references - returns "latest"
+mise ls-remote nix:nixpkgs#hello
 ```
 
-This approach provides better organization by separating the tool name from the flake source, making it easier to manage multiple sources for the same tool.
+### ❌ Known Limitation
 
-#### Usage with flakes
+Due to mise's core argument parsing, the following pattern is **not supported**:
 
 ```sh
-# Use in a project
-mise use "nix:github:nixos/nixpkgs#hello"
+# ❌ Does NOT work
+mise install nix:hello@github:nixos/nixpkgs#hello
+# Error: invalid prefix: github
 
-# Run the tool
-mise exec "nix:nix-community/emacs-overlay#emacs-git" -- emacs --version
-
-# List available versions (limited for flakes)
-mise ls-remote "nix:github:nixos/nixpkgs#hello"
+# ✅ Use this instead
+mise install nix:hello@nixos/nixpkgs#hello
 ```
+
+The plugin automatically converts `nixos/nixpkgs` to `github:nixos/nixpkgs` internally.
 
 ---
 
@@ -248,8 +244,10 @@ max-jobs = 0
 | Caching | Metadata cached for 1 hour | No metadata cache, uses Nix binary caches |
 | Version aliases | `latest`, `stable` supported | Use flake URL revisions |
 | Platform filtering | Automatic compatibility checking | Manual via flake outputs |
-| Private repos | Not supported | Supported via git+ssh and git+https |
-| Local development | Not applicable | Supported via local paths |
+| Private repos | Not supported | ✅ Supported via git+ssh and git+https |
+| Local development | Not applicable | ✅ Supported via local paths |
+| PATH configuration | ✅ Works correctly | ✅ **Fixed** - now works correctly |
+| Tool discovery | ✅ Works correctly | ✅ **Fixed** - now works correctly |
 
 ### When to use each approach
 
@@ -265,6 +263,11 @@ max-jobs = 0
 - You're developing local flakes
 - You need packages not available on NixHub
 - You want to pin to specific commits/revisions
+
+**Use "flake references as versions" when:**
+- You want organized tool names with flexible sources
+- You're managing multiple sources for the same tool type
+- You prefer the `tool@source#package` pattern for clarity
 
 ---
 
@@ -295,6 +298,39 @@ If your workflow depends on such variables, set them manually:
 export JAVA_HOME="$(mise which java | sed 's|/bin/java||')"
 ```
 
+## Working Examples
+
+Here's a quick reference of patterns that work correctly:
+
+```sh
+# Traditional packages
+mise install nix:jq@1.6
+mise install nix:helmfile@stable
+mise exec nix:jq@1.6 -- jq --version
+
+# Flake references as versions (recommended)
+mise install nix:hello@nixos/nixpkgs#hello
+mise install nix:fd@nixpkgs#fd
+mise exec nix:hello@nixos/nixpkgs#hello -- hello
+
+# Direct flake references
+mise install nix:nixos/nixpkgs#ripgrep
+mise install nix:github:nixos/nixpkgs#git
+mise install nix:nixpkgs#btop
+mise exec nix:nixpkgs#ripgrep -- rg --version
+
+# Git repositories
+mise install "nix:git+https://github.com/nixos/nixpkgs.git#hello"
+
+# Version listing
+mise ls-remote nix:helmfile
+mise ls-remote nix:nixpkgs#hello
+
+# Project usage
+mise use nix:node@nixpkgs#nodejs_20
+mise use nix:python@nixpkgs#python311
+```
+
 ## Troubleshooting
 
 ### Common issues
@@ -308,6 +344,15 @@ export JAVA_HOME="$(mise which java | sed 's|/bin/java||')"
 - Check [NixHub](https://www.nixhub.io) to verify the package exists
 - Ensure you're using the correct package name
 - For flakes, verify the flake reference and attribute path
+
+**"invalid prefix: github"**
+- This is a limitation in mise's argument parsing
+- ❌ Don't use: `nix:hello@github:nixos/nixpkgs#hello`
+- ✅ Use instead: `nix:hello@nixos/nixpkgs#hello`
+
+**"multiple tools specified, use --all to uninstall all versions"**
+- When uninstalling flake references that may have multiple installations
+- Use: `mise uninstall nix:nixpkgs#hello --all`
 
 **"No compatible versions found"**
 - The package may not support your operating system or architecture
@@ -350,18 +395,28 @@ mise init
 
 ### Run unit tests
 
-unit
+Run Lua unit tests for helper functions:
+
 ```sh
 mise test
 ```
 
 ### Run e2e tests
 
+Run end-to-end integration tests using BATS:
+
 ```sh
 mise e2e
 ```
 
-Ensure all tests pass. If you make changes to utility functions or logic, be sure to update and rerun tests accordingly.
+The e2e tests cover all major functionality including:
+- Traditional NixHub package installation and execution
+- Flake reference patterns (as versions and direct references)
+- Security features for local flakes
+- Directory structure validation
+- Console output verification
+
+Ensure all tests pass. If you make changes to functionality, be sure to update and rerun tests accordingly.
 
 ### Contributing
 
