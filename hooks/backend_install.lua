@@ -102,6 +102,16 @@ local function install_from_flake(flake_ref, version, install_path)
   cmd.exec(string.format('rm -rf "%s"', install_path))
   cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, install_path))
 
+  -- WORKAROUND: mise expects a directory named after the nix store hash for direct flake references
+  -- Extract the nix store hash from the chosen_path and create an additional symlink
+  local nix_hash = chosen_path:match("/nix/store/([^/]+)")
+  if nix_hash then
+    local install_dir = install_path:match("^(.+)/[^/]+$") -- Get parent directory
+    local hash_path = install_dir .. "/" .. nix_hash
+    cmd.exec(string.format('rm -rf "%s"', hash_path))
+    cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, hash_path))
+  end
+
   print("✅ Successfully installed " .. built_ref)
   return flake_ref
 end
