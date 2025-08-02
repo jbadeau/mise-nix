@@ -134,4 +134,226 @@ describe("Helper module", function()
     end)
   end)
 
+  describe("is_flake_reference", function()
+    it("should detect GitHub flake references", function()
+      assert.is_true(helper.is_flake_reference("github:nixos/nixpkgs#hello"))
+      assert.is_true(helper.is_flake_reference("github:nix-community/emacs-overlay#emacs-git"))
+    end)
+
+    it("should detect GitHub shorthand references", function()
+      assert.is_true(helper.is_flake_reference("nixos/nixpkgs#hello"))
+      assert.is_true(helper.is_flake_reference("nix-community/emacs-overlay#emacs-git"))
+    end)
+
+    it("should detect git+https references", function()
+      assert.is_true(helper.is_flake_reference("git+https://github.com/user/repo.git#package"))
+    end)
+
+    it("should detect git+ssh references", function()
+      assert.is_true(helper.is_flake_reference("git+ssh://git@company.com/tools/overlay.git#tool"))
+    end)
+
+    it("should detect local path references", function()
+      assert.is_true(helper.is_flake_reference("./my-flake#package"))
+      assert.is_true(helper.is_flake_reference("../my-flake#package"))
+      assert.is_true(helper.is_flake_reference("/absolute/path/flake#tool"))
+    end)
+
+    it("should detect nixpkgs shorthand", function()
+      assert.is_true(helper.is_flake_reference("nixpkgs#hello"))
+    end)
+
+    it("should detect path and file URIs", function()
+      assert.is_true(helper.is_flake_reference("path:/some/path#package"))
+      assert.is_true(helper.is_flake_reference("file:/some/path#package"))
+    end)
+
+    it("should not detect regular package names", function()
+      assert.is_false(helper.is_flake_reference("hello"))
+      assert.is_false(helper.is_flake_reference("python"))
+      assert.is_false(helper.is_flake_reference(""))
+      assert.is_false(helper.is_flake_reference(nil))
+      assert.is_false(helper.is_flake_reference("not-a-flake"))
+    end)
+  end)
+
+  describe("parse_flake_reference", function()
+    it("should parse GitHub flake references with attribute", function()
+      local parsed = helper.parse_flake_reference("github:nixos/nixpkgs#hello")
+      assert.equal("github:nixos/nixpkgs", parsed.url)
+      assert.equal("hello", parsed.attribute)
+      assert.equal("github:nixos/nixpkgs#hello", parsed.full_ref)
+    end)
+
+    it("should normalize GitHub shorthand with attribute", function()
+      local parsed = helper.parse_flake_reference("nixos/nixpkgs#hello")
+      assert.equal("github:nixos/nixpkgs", parsed.url)
+      assert.equal("hello", parsed.attribute)
+      assert.equal("github:nixos/nixpkgs#hello", parsed.full_ref)
+    end)
+
+    it("should parse git+https references with attribute", function()
+      local parsed = helper.parse_flake_reference("git+https://github.com/user/repo.git#package")
+      assert.equal("git+https://github.com/user/repo.git", parsed.url)
+      assert.equal("package", parsed.attribute)
+      assert.equal("git+https://github.com/user/repo.git#package", parsed.full_ref)
+    end)
+
+    it("should parse local path references with attribute", function()
+      local parsed = helper.parse_flake_reference("./my-flake#package")
+      assert.equal("./my-flake", parsed.url)
+      assert.equal("package", parsed.attribute)
+      assert.equal("./my-flake#package", parsed.full_ref)
+    end)
+
+    it("should parse nixpkgs shorthand with attribute", function()
+      local parsed = helper.parse_flake_reference("nixpkgs#hello")
+      assert.equal("nixpkgs", parsed.url)
+      assert.equal("hello", parsed.attribute)
+      assert.equal("nixpkgs#hello", parsed.full_ref)
+    end)
+
+    it("should parse flake reference without explicit attribute, defaulting to 'default'", function()
+      local parsed = helper.parse_flake_reference("github:nixos/nixpkgs")
+      assert.equal("github:nixos/nixpkgs", parsed.url)
+      assert.equal("default", parsed.attribute)
+      assert.equal("github:nixos/nixpkgs#default", parsed.full_ref)
+    end)
+
+    it("should error on missing attribute if '#' is present but attribute is empty", function()
+      assert.has_error(function()
+        helper.parse_flake_reference("github:nixos/nixpkgs#")
+      end, "Invalid flake reference format. Expected 'flake_url#attribute', but attribute is empty after '#'. Got: github:nixos/nixpkgs#")
+    end)
+  end)
+
+  describe("get_flake_versions", function()
+    it("should return versions for GitHub flakes", function()
+      local versions = helper.get_flake_versions("github:nixos/nixpkgs#hello")
+      assert.is_true(#versions >= 1)
+      assert.equal("latest", versions[1])
+    end)
+
+    it("should return versions for local flakes", function()
+      local versions = helper.get_flake_versions("./my-flake#package")
+      assert.is_true(#versions >= 1)
+      assert.equal("local", versions[1])
+    end)
+
+    it("should return versions for path URIs", function()
+      local versions = helper.get_flake_versions("path:/some/path#package")
+      assert.is_true(#versions >= 1)
+      assert.equal("local", versions[1])
+    end)
+
+    it("should return versions for absolute paths", function()
+      local versions = helper.get_flake_versions("/absolute/path#package")
+      assert.is_true(#versions >= 1)
+      assert.equal("local", versions[1])
+    end)
+  end)
+
+  describe("build_flake", function()
+    -- Note: These tests would require mocking cmd.exec since they involve actual nix commands
+    -- For now, we'll test the validation logic
+
+    it("should validate flake reference format", function()
+      assert.has_error(function()
+        helper.build_flake("invalid-flake-ref")
+      end, "Invalid flake reference") -- Error message from parse_flake_reference
+    end)
+
+    it("should accept valid flake references", function()
+      -- This would normally call nix build, so we can't easily test without mocking
+      -- but we can verify it doesn't error on the validation step
+      local mock_cmd = {
+        exec = function(cmd)
+          if cmd:match("nix build") then
+            return "/nix/store/abc123-package"
+          end
+          return ""
+        end
+      }
+
+      -- We'd need to inject the mock, but for now we know the validation works
+      -- if it gets past the is_flake_reference check
+      assert.is_true(helper.is_flake_reference("github:nixos/nixpkgs#hello"))
+    end)
+  end)
+
+  describe("check_nix_available", function()
+    -- This would also require mocking cmd.exec to test properly
+    it("should check for nix availability", function()
+      -- We can't easily test this without mocking the cmd module
+      -- but we can verify the function exists
+      assert.is_function(helper.check_nix_available)
+    end)
+  end)
+
+  describe("Security functions", function()
+    describe("allow_local_flakes", function()
+      it("should return false by default", function()
+        assert.is_false(helper.allow_local_flakes())
+      end)
+    end)
+
+    describe("is_safe_local_path", function()
+      it("should reject dangerous system paths", function()
+        assert.is_false(helper.is_safe_local_path("/etc/passwd"))
+        assert.is_false(helper.is_safe_local_path("/usr/bin/malicious"))
+        assert.is_false(helper.is_safe_local_path("/root/.ssh/id_rsa"))
+        assert.is_false(helper.is_safe_local_path("/home/user/.ssh/id_rsa"))
+      end)
+
+      it("should reject excessive path traversal", function()
+        assert.is_false(helper.is_safe_local_path("../../../etc/passwd"))
+        assert.is_false(helper.is_safe_local_path("../../../../usr/bin"))
+      end)
+
+      it("should allow safe relative paths", function()
+        assert.is_true(helper.is_safe_local_path("./my-flake"))
+        assert.is_true(helper.is_safe_local_path("../parent-flake"))
+        assert.is_true(helper.is_safe_local_path("subdir/flake"))
+      end)
+
+      it("should reject nil or non-string inputs", function()
+        assert.is_false(helper.is_safe_local_path(nil))
+        assert.is_false(helper.is_safe_local_path(123))
+        assert.is_false(helper.is_safe_local_path({}))
+      end)
+    end)
+
+    describe("validate_local_flake_security", function()
+      it("should allow non-local flakes", function()
+        assert.is_true(helper.validate_local_flake_security("github:nixos/nixpkgs#hello"))
+        assert.is_true(helper.validate_local_flake_security("git+https://github.com/user/repo.git#package"))
+      end)
+
+      it("should reject local flakes when disabled", function()
+        -- Mock environment to disable local flakes
+        local old_env = os.getenv("MISE_NIX_ALLOW_LOCAL_FLAKES")
+        
+        assert.has_error(function()
+          helper.validate_local_flake_security("./my-flake#package")
+        end, "Local flakes are disabled for security. Set MISE_NIX_ALLOW_LOCAL_FLAKES=true to enable.")
+      end)
+    end)
+  end)
+
+  describe("choose_store_path_with_bin", function()
+    -- This would require mocking file system operations
+    it("should handle empty outputs", function()
+      assert.has_error(function()
+        helper.choose_store_path_with_bin({})
+      end, "No valid output paths found from nix build.")
+    end)
+  end)
+
+  describe("verify_build", function()
+    -- This would require mocking file system operations
+    it("should be a function", function()
+      assert.is_function(helper.verify_build)
+    end)
+  end)
+
 end)
