@@ -1,5 +1,10 @@
 local M = {}
 
+-- These modules are provided by the mise runtime
+-- For testing, mock implementations are available in lib/cmd.lua and lib/json.lua
+local cmd = require("cmd")
+local json = require("json")
+
 function M.normalize_os(os)
   os = os:lower()
   if os == "darwin" then return "macos"
@@ -31,15 +36,241 @@ function M.get_nixpkgs_repo_url()
 end
 
 function M.get_cache_path(tool)
-  local cmd = require("cmd")
   local cache_dir = os.getenv("HOME") .. "/.cache/mise-nix"
   cmd.exec("mkdir -p " .. cache_dir)
   return cache_dir .. "/" .. tool .. ".json"
 end
 
+-- Security functions for local flake handling
+
+function M.allow_local_flakes()
+  return os.getenv("MISE_NIX_ALLOW_LOCAL_FLAKES") == "true"
+end
+
+function M.is_safe_local_path(path)
+  -- Only allow paths within current working directory and block dangerous paths
+  if not path or type(path) ~= "string" then return false end
+  
+  -- Block obviously dangerous paths
+  local dangerous_patterns = {
+    "^/etc/",
+    "^/usr/",
+    "^/bin/",
+    "^/sbin/",
+    "^/boot/",
+    "^/root/",
+    "^/home/[^/]+/%.ssh/",
+    "^/home/[^/]+/%.gnupg/",
+    "/%.%./"  -- path traversal attempts
+  }
+  
+  for _, pattern in ipairs(dangerous_patterns) do
+    if path:match(pattern) then return false end
+  end
+  
+  -- For relative paths, ensure they don't escape the current directory
+  if path:match("^%.%.") then
+    -- Count directory traversals
+    local up_count = 0
+    for _ in path:gmatch("%.%./") do
+      up_count = up_count + 1
+    end
+    -- Don't allow going up more than 2 levels to prevent deep traversal
+    if up_count > 2 then return false end
+  end
+  
+  -- For absolute paths, check if they're within a safe directory
+  if path:match("^/") then
+    local cwd = cmd.exec("pwd 2>/dev/null || echo ''"):gsub("\n", "")
+    if cwd == "" then return false end
+    
+    -- Try to resolve the real path
+    local realpath = cmd.exec("realpath '" .. path .. "' 2>/dev/null || echo INVALID"):gsub("\n", "")
+    if realpath == "INVALID" then return false end
+    
+    -- Only allow paths within current working directory or its subdirectories
+    return realpath:sub(1, #cwd) == cwd
+  end
+  
+  return true
+end
+
+function M.validate_local_flake_security(flake_ref)
+  local parsed = M.parse_flake_reference(flake_ref)
+  local is_local = parsed.url:match("^%.") or parsed.url:match("^/") or 
+                   parsed.url:match("^path:") or parsed.url:match("^file:")
+  
+  if not is_local then return true end
+  
+  -- Check if local flakes are allowed
+  if not M.allow_local_flakes() then
+    error("Local flakes are disabled for security. Set MISE_NIX_ALLOW_LOCAL_FLAKES=true to enable.")
+  end
+  
+  -- Extract path from URL
+  local path = parsed.url
+  if path:match("^path:") then
+    path = path:gsub("^path:", "")
+  elseif path:match("^file:") then
+    path = path:gsub("^file:", "")
+  end
+  
+  -- Validate the path is safe
+  if not M.is_safe_local_path(path) then
+    error("Local flake path is not safe: " .. path .. ". Path must be within current working directory and not access sensitive system directories.")
+  end
+  
+  return true
+end
+
+-- New function to detect if a tool name is a flake reference
+function M.is_flake_reference(tool)
+  if not tool or type(tool) ~= "string" then return false end
+
+  -- Check for flake reference patterns
+  local patterns = {
+    "^github:",           -- github:owner/repo#package
+    "^gitlab:",           -- gitlab:owner/repo#package
+    "^git%+https://",     -- git+https://...#package
+    "^git%+ssh://",       -- git+ssh://...#package
+    "^%.%./",             -- ../relative/path#package
+    "^%.?/",              -- ./relative/path#package (added for current dir relative paths)
+    "^/",                 -- /absolute/path#package
+    "^[%w%-_%.]+/[%w%-_%.]+#",  -- owner/repo#package (GitHub shorthand)
+    "^nixpkgs#",          -- nixpkgs#hello (common shorthand)
+    "^path:",             -- path:/some/path#package
+    "^file:",             -- file:/some/path#package
+  }
+
+  for _, pattern in ipairs(patterns) do
+    if tool:match(pattern) then return true end
+  end
+
+  -- Check if it looks like a path that might omit the leading ./ but still be a flake
+  if tool:match("^[%w%-_%.]+#") then -- e.g., "my-flake#package" assuming current dir
+      -- This is ambiguous, could be a regular package name with a hash in it
+      -- For now, we'll keep it as false unless more context is available
+      -- The safest bet is to require a more explicit path or URL prefix.
+  end
+
+  return false
+end
+
+-- Parse flake reference into components
+function M.parse_flake_reference(flake_ref)
+  local flake_url, attribute = flake_ref:match("^(.-)#(.+)$")
+
+  -- If no attribute is explicitly provided, assume 'default'
+  if not attribute and flake_ref:find("#") then
+      error("Invalid flake reference format. Expected 'flake_url#attribute', but attribute is empty after '#'. Got: " .. flake_ref)
+  elseif not attribute then -- No '#' found, so attribute is implicitly 'default'
+      flake_url = flake_ref
+      attribute = "default"
+  end
+
+
+  -- Normalize GitHub shorthand (owner/repo -> github:owner/repo)
+  -- But exclude local paths that start with ./ or ../
+  if flake_url:match("^[%w%-_%.]+/[%w%-_%.]+$") and not flake_url:match("^%.") then
+    flake_url = "github:" .. flake_url
+  end
+
+  return {
+    url = flake_url,
+    attribute = attribute,
+    full_ref = flake_url .. "#" .. attribute
+  }
+end
+
+-- Get available versions for a flake (mock implementation for now)
+function M.get_flake_versions(flake_ref)
+  -- NOTE: This is a mock implementation.
+  -- For flakes, enumerating historical versions like with traditional package registries is complex
+  -- and generally requires inspecting the flake's git history or specific commands.
+  -- For now, we return 'latest' or 'local' as logical representations.
+  local parsed = M.parse_flake_reference(flake_ref)
+
+  -- Try to get commit info if it's a git-based flake
+  if parsed.url:match("github:") or parsed.url:match("gitlab:") or parsed.url:match("git%+") then
+    return {"latest"}  -- For now, just return "latest"
+  elseif parsed.url:match("^%.") or parsed.url:match("^/") or parsed.url:match("^path:") or parsed.url:match("^file:") then
+    -- Local flakes - return current state
+    return {"local"}
+  else
+    return {"latest"} -- Default for other recognized flake types
+  end
+end
+
+-- Build a flake reference
+function M.build_flake(flake_ref, version)
+  -- Validate that it's actually a flake reference
+  if not M.is_flake_reference(flake_ref) then
+    error("Invalid flake reference")
+  end
+  
+  local parsed = M.parse_flake_reference(flake_ref)
+  
+  -- Security validation and warnings for local flakes
+  local is_local = parsed.url:match("^%.") or parsed.url:match("^/") or 
+                   parsed.url:match("^path:") or parsed.url:match("^file:")
+  
+  if is_local then
+    print("⚠️  WARNING: Using local flake - ensure you trust the source: " .. parsed.url)
+    print("   Local flakes can execute arbitrary code during evaluation and build.")
+    M.validate_local_flake_security(flake_ref)
+  end
+
+  local build_ref = parsed.full_ref
+
+  -- If version is specified and not "latest"/"local"/"", try to append it as a revision
+  if version and version ~= "latest" and version ~= "local" and version ~= "" then
+    -- For git-based flakes, we can specify a revision
+    if parsed.url:match("github:") or parsed.url:match("gitlab:") then
+      -- Remove any existing revision (if present) and add the new one
+      local base_url = parsed.url:gsub("/[a-fA-F0-9]+$", ""):gsub("/v?%d+%.%d+%.%d+.*$", "") -- Remove existing hash/tag
+      build_ref = base_url .. "/" .. version .. "#" .. parsed.attribute
+    elseif parsed.url:match("git%+") then
+      -- For git+ URLs, we need to add ?ref= or ?rev= parameter
+      local separator = parsed.url:find("?") and "&" or "?"
+      -- Remove existing ref/rev if present before adding the new one
+      local cleaned_url = parsed.url:gsub("([%?&])(ref|rev)=[^&#]+", ""):gsub("[?&]$", "")
+      build_ref = cleaned_url .. separator .. "rev=" .. version .. "#" .. parsed.attribute
+    end
+  end
+
+  -- Build with security-focused options
+  local sandbox_flag = ""
+  local extra_sandbox_flag = ""
+  
+  -- Enable sandbox for better security isolation
+  if os.getenv("MISE_NIX_ENABLE_SANDBOX") ~= "false" then
+    sandbox_flag = "--sandbox"
+  end
+  
+  -- Add extra security flags for untrusted sources
+  if is_local or os.getenv("MISE_NIX_EXTRA_SECURITY") == "true" then
+    extra_sandbox_flag = "--restrict-eval"
+  end
+  
+  local cmdline = string.format("nix build --no-link --print-out-paths %s %s '%s'", 
+                                sandbox_flag, extra_sandbox_flag, build_ref)
+
+  print("🔨 Building flake " .. build_ref .. "...")
+  local result = cmd.exec(cmdline)
+  local outputs = {}
+  for path in result:gmatch("[^\n]+") do
+    table.insert(outputs, path)
+  end
+
+  if #outputs == 0 then
+    error("No outputs returned by nix build for flake: " .. build_ref)
+  end
+
+  return outputs, build_ref
+end
+
 function M.fetch_tool_metadata(tool)
-  local cmd = require("cmd")
-  local json = require("json")
+
   local url = M.get_nixhub_base_url() .. "/packages/" .. tool .. "?_data=routes%2F_nixhub.packages.%24pkg._index"
 
   -- Add timeout and better error handling
@@ -54,8 +285,6 @@ function M.fetch_tool_metadata(tool)
 end
 
 function M.fetch_tool_metadata_cached(tool, max_age_seconds)
-  local cmd = require("cmd")
-  local json = require("json")
   local cache_file = M.get_cache_path(tool)
 
   -- Check if cache exists and is fresh
@@ -128,7 +357,6 @@ function M.find_latest_stable(versions)
 end
 
 function M.choose_store_path_with_bin(outputs)
-  local cmd = require("cmd")
   local candidates = {}
 
   for _, path in ipairs(outputs) do
@@ -150,11 +378,14 @@ function M.choose_store_path_with_bin(outputs)
     return a.bin_count > b.bin_count
   end)
 
+  if #candidates == 0 then
+      error("No valid output paths found from nix build.")
+  end
+
   return candidates[1].path, candidates[1].has_bin
 end
 
 function M.check_nix_available()
-  local cmd = require("cmd")
   local result = cmd.exec("which nix 2>/dev/null || echo MISSING")
   if result:match("MISSING") then
     error("Nix is not installed or not in PATH. Please install Nix first.")
@@ -162,7 +393,6 @@ function M.check_nix_available()
 end
 
 function M.verify_build(chosen_path, tool)
-  local cmd = require("cmd")
   -- Check if the path actually exists and is accessible
   local exists = cmd.exec("test -e '" .. chosen_path .. "' && echo yes || echo no"):match("yes")
   if not exists then
@@ -171,9 +401,14 @@ function M.verify_build(chosen_path, tool)
 
   -- Optional: verify expected binaries exist
   local bin_path = chosen_path .. "/bin"
-  if cmd.exec("test -d '" .. bin_path .. "' && echo yes || echo no"):match("yes") then
+  local has_bin_dir = cmd.exec("test -d '" .. bin_path .. "' && echo yes || echo no"):match("yes")
+  if has_bin_dir then
     local binaries = cmd.exec("ls -1 '" .. bin_path .. "' 2>/dev/null")
-    print("Installed binaries: " .. binaries:gsub("\n", ", "))
+    if binaries and binaries ~= "" then
+      print("Installed binaries: " .. binaries:gsub("\n", ", "))
+    else
+      print("Installed package contains a /bin directory but it is empty.")
+    end
   end
 end
 
