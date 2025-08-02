@@ -61,24 +61,6 @@ jobs:
       - run: mise exec -- npx nx fix-ci
         if: always()
 
-      - name: Create prerelease
-        run: |
-          # Generate prerelease version using branch name only
-          BRANCH_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          PRERELEASE_VERSION="${BRANCH_NAME}"
-          
-          echo "Creating prerelease: $PRERELEASE_VERSION"
-          
-          # Configure git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Use nx release with prerelease
-          npx nx release --yes --preid "$PRERELEASE_VERSION"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
   # Release job - runs only when MR is merged to main
   release:
     runs-on: ubuntu-latest
