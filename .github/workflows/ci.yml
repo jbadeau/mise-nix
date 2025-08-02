@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  # Prerelease job - runs on PR creation/updates only
+  prerelease:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened", "synchronize", "reopened"]'), github.event.action)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
+
+      # Install mise
+      - name: Install mise
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      # Install tools from mise.toml (node, lua)
+      - name: Install mise tools
+        run: mise install
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: Install nix
+        uses: cachix/install-nix-action@v23
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Install BATS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+      
+      # Run mise tests
+      - name: Run mise init
+        run: mise init
+
+      # Run tests and build (use mise to ensure tools are in PATH)
+      - name: Run tests
+        run: mise exec -- npx nx run-many -t lint test e2e
+
+      # Nx Cloud recommends fixes for failures to help you get CI green faster
+      - run: mise exec -- npx nx fix-ci
+        if: always()
+
+      - name: Create prerelease
+        run: |
+          # Generate prerelease version using branch name only
+          BRANCH_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
+          PRERELEASE_VERSION="${BRANCH_NAME}"
+          
+          echo "Creating prerelease: $PRERELEASE_VERSION"
+          
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Use nx release with prerelease
+          npx nx release --yes --preid "$PRERELEASE_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Release job - runs only when MR is merged to main
+  release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge pull request')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Install mise
+      - name: Install mise
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      # Install tools from mise.toml (node, lua)
+      - name: Install mise tools
+        run: mise install
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: Install nix
+        uses: cachix/install-nix-action@v23
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Install BATS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      # Run mise tests
+      - name: Run mise init
+        run: mise init
+
+      # Run tests and build (use mise to ensure tools are in PATH)
+      - name: Run tests
+        run: mise exec -- npx nx run-many -t lint test e2e
+
+      # Nx Cloud recommends fixes for failures to help you get CI green faster
+      - run: mise exec -- npx nx fix-ci
+        if: always()
+
+      - name: Create release
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Use nx release - handles versioning, changelog, and GitHub release
+          npx nx release --yes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
