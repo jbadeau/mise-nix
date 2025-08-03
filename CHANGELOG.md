@@ -1,3 +1,13 @@
+## 0.10.0 (2025-08-03)
+
+### 🚀 Features
+
+- improve flake installation examples and add performance warnings ([af9d6c0](https://github.com/jbadeau/mise-nix/commit/af9d6c0))
+
+### ❤️ Thank You
+
+- jbadeau
+
 ## 0.9.0-nx-release.0 (2025-08-02)
 
 ### 🚀 Features
