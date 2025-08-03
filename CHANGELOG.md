@@ -2,7 +2,7 @@
 
 ### 🚀 Features
 
-- improve flake installation examples and add performance warnings ([af9d6c0](https://github.com/jbadeau/mise-nix/commit/af9d6c0))
+- Improve flake installation examples and add performance warnings ([af9d6c0](https://github.com/jbadeau/mise-nix/commit/af9d6c0))
 
 ### ❤️ Thank You
 
@@ -12,7 +12,15 @@
 
 ### 🚀 Features
 
-- Fix flake reference PATH issues and migrate tests to BATS   - Fix PATH configuration for direct flake references (nix:nixos/nixpkgs#hello)   - Add workaround for mise's directory structure expectations with nix store hashes   - Enhance backend_exec_env.lua to resolve symlinks to actual nix store paths   - Migrate test suite from shell script to BATS format with proper assertions   - Add comprehensive console output verification and error handling   - Document GitHub prefix limitation in tool@version parsing   - Update README with working examples and troubleshooting guide   - Update mise e2e command to use new BATS test suite ([4e3462c](https://github.com/jbadeau/mise-nix/commit/4e3462c))
+- Fix flake reference PATH issues and migrate tests to BATS
+- Fix PATH configuration for direct flake references (nix:nixos/nixpkgs#hello)
+- Add workaround for mise's directory structure expectations with nix store hashes
+- Enhance backend_exec_env.lua to resolve symlinks to actual nix store paths
+- Migrate test suite from shell script to BATS format with proper assertions
+- Add comprehensive console output verification and error handling
+- Document GitHub prefix limitation in tool@version parsing
+- Update README with working examples and troubleshooting guide
+- Update mise e2e command to use new BATS test suite
 
 ### ❤️ Thank You
 
