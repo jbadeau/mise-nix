@@ -123,16 +123,120 @@ function M.validate_local_flake_security(flake_ref)
   return true
 end
 
+-- Convert custom git prefixes to standard nix flake URLs
+function M.convert_custom_git_prefix(version)
+  if not version or type(version) ~= "string" then return version end
+  
+  -- New syntax with + separator: ssh+host/repo.git -> git+ssh://host/repo.git
+  -- This avoids conflicts with # used for flake attributes
+  
+  -- SSH URLs: ssh+... -> git+ssh://...
+  if version:match("^ssh%+") then
+    local path = version:gsub("^ssh%+", "")
+    -- Ensure proper URL format for git+ssh
+    if not path:match("^[%w%-_%.]+@") then
+      -- If it doesn't start with user@, add git@ prefix
+      path = "git@" .. path
+    end
+    return "git+ssh://" .. path
+  end
+  
+  -- HTTPS URLs: https+... -> git+https://...
+  if version:match("^https%+") then
+    local path = version:gsub("^https%+", "")
+    return "git+https://" .. path
+  end
+  
+  -- GitHub shorthand: gh+user/repo -> github:user/repo
+  if version:match("^gh%+[%w%-_%.]+/[%w%-_%.]+") then
+    local path = version:gsub("^gh%+", "")
+    return "github:" .. path
+  end
+  
+  -- GitLab shorthand: gl+group/project -> gitlab:group/project  
+  if version:match("^gl%+[%w%-_%.]+/[%w%-_%.]+") then
+    local path = version:gsub("^gl%+", "")
+    return "gitlab:" .. path
+  end
+  
+  -- Legacy patterns (keep for backward compatibility)
+  
+  -- GitHub shorthand: gh-user/repo -> github:user/repo
+  if version:match("^gh%-[%w%-_%.]+/[%w%-_%.]+") then
+    local path = version:gsub("^gh%-", "")
+    return "github:" .. path
+  end
+  
+  -- GitLab shorthand: gl-group/project -> gitlab:group/project  
+  if version:match("^gl%-[%w%-_%.]+/[%w%-_%.]+") then
+    local path = version:gsub("^gl%-", "")
+    return "gitlab:" .. path
+  end
+  
+  -- SSH URLs: ssh-git@... -> git+ssh://git@...
+  if version:match("^ssh%-") then
+    local path = version:gsub("^ssh%-", "")
+    return "git+ssh://" .. path
+  end
+  
+  -- HTTPS URLs: https-... -> git+https://...
+  if version:match("^https%-") then
+    local path = version:gsub("^https%-", "")
+    return "git+https://" .. path
+  end
+  
+  -- Custom enterprise instances via environment variables
+  local github_enterprise = os.getenv("MISE_NIX_GITHUB_ENTERPRISE_URL")
+  local gitlab_instance = os.getenv("MISE_NIX_GITLAB_URL")
+  
+  -- GitHub Enterprise shorthand: ghe+user/repo
+  if github_enterprise and version:match("^ghe%+") then
+    local path = version:gsub("^ghe%+", "")
+    return "git+https://" .. github_enterprise .. "/" .. path
+  end
+  
+  -- GitLab instance shorthand: gli+group/project  
+  if gitlab_instance and version:match("^gli%+") then
+    local path = version:gsub("^gli%+", "")
+    return "git+https://" .. gitlab_instance .. "/" .. path
+  end
+  
+  -- Legacy enterprise patterns
+  if github_enterprise and version:match("^ghe%-") then
+    local path = version:gsub("^ghe%-", "")
+    return "git+https://" .. github_enterprise .. "/" .. path
+  end
+  
+  if gitlab_instance and version:match("^gli%-") then
+    local path = version:gsub("^gli%-", "")
+    return "git+https://" .. gitlab_instance .. "/" .. path
+  end
+  
+  return version
+end
+
 -- New function to detect if a tool name is a flake reference
 function M.is_flake_reference(tool)
   if not tool or type(tool) ~= "string" then return false end
 
-  -- Check for flake reference patterns
+  -- Check for flake reference patterns (including custom prefixes)
   local patterns = {
     "^github:",           -- github:owner/repo#package
     "^gitlab:",           -- gitlab:owner/repo#package
     "^git%+https://",     -- git+https://...#package
     "^git%+ssh://",       -- git+ssh://...#package
+    "^ssh%+",             -- ssh+host/repo.git#package (new syntax)
+    "^https%+",           -- https+host/repo.git#package (new syntax)
+    "^gh%+",              -- gh+owner/repo#package (new GitHub shorthand)
+    "^gl%+",              -- gl+group/project#package (new GitLab shorthand)
+    "^ghe%+",             -- ghe+owner/repo#package (new GitHub Enterprise)
+    "^gli%+",             -- gli+group/project#package (new GitLab instance)
+    "^gh%-",              -- gh-owner/repo#package (legacy GitHub shorthand)
+    "^gl%-",              -- gl-group/project#package (legacy GitLab shorthand)
+    "^ssh%-",             -- ssh-git@...#package (legacy SSH URLs)
+    "^https%-",           -- https-...#package (legacy HTTPS URLs)
+    "^ghe%-",             -- ghe-owner/repo#package (legacy GitHub Enterprise)
+    "^gli%-",             -- gli-group/project#package (legacy GitLab instance)
     "^%.%./",             -- ../relative/path#package
     "^%.?/",              -- ./relative/path#package (added for current dir relative paths)
     "^/",                 -- /absolute/path#package
@@ -168,6 +272,8 @@ function M.parse_flake_reference(flake_ref)
       attribute = "default"
   end
 
+  -- Convert custom git prefixes to standard nix flake URLs
+  flake_url = M.convert_custom_git_prefix(flake_url)
 
   -- Normalize GitHub shorthand (owner/repo -> github:owner/repo)
   -- But exclude local paths that start with ./ or ../

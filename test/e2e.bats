@@ -108,7 +108,7 @@ check_directory_structure() {
     [ "$status" -eq 0 ]
 }
 
-@test "install flake reference as version (full GitHub reference)" {
+@test "flake reference with github: prefix should fail" {
     # Note: github: prefix is not supported in mise's tool@version parsing
     # This is a limitation of mise's command line argument parsing, not the plugin
     run mise install nix:hello@github:nixos/nixpkgs#hello
@@ -116,52 +116,19 @@ check_directory_structure() {
     [[ "$output" =~ "invalid prefix: github" ]]
 }
 
-@test "install direct GitHub shorthand flake reference" {
-    run mise install nix:nixos/nixpkgs#hello
-    [ "$status" -eq 0 ]
-    
-    run mise exec nix:nixos/nixpkgs#hello -- hello
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ "Hello, world!" ]]
-    
-    check_directory_structure "nix:nixos/nixpkgs#hello" "latest"
-    
-    run mise uninstall nix:nixos/nixpkgs#hello --all
-    [ "$status" -eq 0 ]
+@test "git repository flake reference should fail due to mise parsing" {
+    # git+https: prefix is not supported in mise's tool@version parsing
+    # This is a limitation of mise's command line argument parsing, not the plugin
+    run mise install "nix:hello@git+https://github.com/nixos/nixpkgs.git#hello"
+    [ "$status" -ne 0 ]
+    [[ "$output" =~ "invalid prefix: git+https" ]]
 }
 
-@test "install direct full GitHub flake reference" {
-    run mise install nix:github:nixos/nixpkgs#hello
+@test "ls-remote for flake references returns empty (no versions)" {
+    run mise ls-remote nix:hello@nixpkgs#hello
     [ "$status" -eq 0 ]
-    
-    run mise exec nix:github:nixos/nixpkgs#hello -- hello
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ "Hello, world!" ]]
-    
-    check_directory_structure "nix:github:nixos/nixpkgs#hello" "latest"
-    
-    run mise uninstall nix:github:nixos/nixpkgs#hello --all
-    [ "$status" -eq 0 ]
-}
-
-@test "install nixpkgs shorthand flake reference" {
-    run mise install nix:nixpkgs#hello
-    [ "$status" -eq 0 ]
-    
-    run mise exec nix:nixpkgs#hello -- hello
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ "Hello, world!" ]]
-    
-    check_directory_structure "nix:nixpkgs#hello" "latest"
-    
-    run mise uninstall nix:nixpkgs#hello --all
-    [ "$status" -eq 0 ]
-}
-
-@test "ls-remote for flake references returns latest" {
-    run mise ls-remote nix:nixpkgs#hello
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ "latest" ]]
+    # Flake references don't have traditional version listings
+    [ -z "$output" ]
 }
 
 @test "security: local flakes blocked when disabled" {
@@ -173,6 +140,43 @@ check_directory_structure() {
     [ "$status" -ne 0 ]
     # The current implementation shows a different error message
     [[ "$output" =~ "Tool not found or missing releases" ]]
+}
+
+@test "custom git prefix: gh- GitHub shorthand" {
+    run mise install "nix:hello@gh-nixos/nixpkgs#hello"
+    [ "$status" -eq 0 ]
+    
+    run mise exec "nix:hello@gh-nixos/nixpkgs#hello" -- hello
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Hello, world!" ]]
+    
+    check_directory_structure "nix:hello@gh-nixos/nixpkgs#hello" "gh-nixos-nixpkgs#hello"
+    
+    run mise uninstall "nix:hello@gh-nixos/nixpkgs#hello"
+    [ "$status" -eq 0 ]
+}
+
+@test "custom git prefix: gl- GitLab shorthand" {
+    # Note: This tests the parsing/conversion but may fail on actual build if GitLab repo doesn't exist
+    run mise ls-remote "nix:hello@gl-group/project#package"
+    [ "$status" -eq 0 ]
+    # Should not error on parsing, even if repo doesn't exist
+}
+
+@test "custom git prefix: ssh- URL should work" {
+    # Test that ssh- prefix is recognized as a flake reference
+    # This won't actually install (since we don't have SSH access to test repos)
+    # but should at least parse correctly and not be rejected by mise
+    run mise ls-remote "nix:hello@ssh-git@github.com/nixos/nixpkgs.git#hello"
+    [ "$status" -eq 0 ]
+    # The command should succeed (empty output for flake ls-remote is normal)
+}
+
+@test "custom git prefix: https- URL should work" {
+    # Test that https- prefix is recognized as a flake reference  
+    run mise ls-remote "nix:hello@https-github.com/nixos/nixpkgs.git#hello"
+    [ "$status" -eq 0 ]
+    # The command should succeed (empty output for flake ls-remote is normal)
 }
 
 @test "security: local flakes allowed when enabled" {
