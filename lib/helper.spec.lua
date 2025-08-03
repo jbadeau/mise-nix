@@ -134,6 +134,49 @@ describe("Helper module", function()
     end)
   end)
 
+  describe("convert_custom_git_prefix", function()
+    it("should convert gh- prefix", function()
+      assert.equal("github:nixos/nixpkgs", helper.convert_custom_git_prefix("gh-nixos/nixpkgs"))
+      assert.equal("github:company/private-repo", helper.convert_custom_git_prefix("gh-company/private-repo"))
+    end)
+
+    it("should convert gl- prefix", function()
+      assert.equal("gitlab:group/project", helper.convert_custom_git_prefix("gl-group/project"))
+      assert.equal("gitlab:company/tools", helper.convert_custom_git_prefix("gl-company/tools"))
+    end)
+
+    it("should convert ssh- prefix", function()
+      assert.equal("git+ssh://git@github.com/user/repo.git", helper.convert_custom_git_prefix("ssh-git@github.com/user/repo.git"))
+      assert.equal("git+ssh://git@company.com/team/project.git", helper.convert_custom_git_prefix("ssh-git@company.com/team/project.git"))
+    end)
+
+    it("should convert https- prefix", function()
+      assert.equal("git+https://github.com/user/repo.git", helper.convert_custom_git_prefix("https-github.com/user/repo.git"))
+      assert.equal("git+https://user:token@gitlab.com/group/project.git", helper.convert_custom_git_prefix("https-user:token@gitlab.com/group/project.git"))
+    end)
+
+    it("should handle enterprise instances with environment variables", function()
+      -- When no environment variables are set, these should return unchanged
+      assert.equal("ghe-user/repo", helper.convert_custom_git_prefix("ghe-user/repo"))
+      assert.equal("gli-group/project", helper.convert_custom_git_prefix("gli-group/project"))
+      
+      -- Note: Full environment variable testing would require proper mocking
+      -- which is beyond the scope of this simple test
+    end)
+
+    it("should leave other prefixes unchanged", function()
+      assert.equal("github:nixos/nixpkgs", helper.convert_custom_git_prefix("github:nixos/nixpkgs"))
+      assert.equal("git+https://github.com/user/repo.git", helper.convert_custom_git_prefix("git+https://github.com/user/repo.git"))
+      assert.equal("./local/path", helper.convert_custom_git_prefix("./local/path"))
+      assert.equal("nixpkgs", helper.convert_custom_git_prefix("nixpkgs"))
+    end)
+
+    it("should handle nil and empty inputs", function()
+      assert.is_nil(helper.convert_custom_git_prefix(nil))
+      assert.equal("", helper.convert_custom_git_prefix(""))
+    end)
+  end)
+
   describe("is_flake_reference", function()
     it("should detect GitHub flake references", function()
       assert.is_true(helper.is_flake_reference("github:nixos/nixpkgs#hello"))
@@ -151,6 +194,15 @@ describe("Helper module", function()
 
     it("should detect git+ssh references", function()
       assert.is_true(helper.is_flake_reference("git+ssh://git@company.com/tools/overlay.git#tool"))
+    end)
+
+    it("should detect custom git prefix references", function()
+      assert.is_true(helper.is_flake_reference("gh-nixos/nixpkgs#hello"))
+      assert.is_true(helper.is_flake_reference("gl-group/project#package"))
+      assert.is_true(helper.is_flake_reference("ssh-git@company.com/repo.git#tool"))
+      assert.is_true(helper.is_flake_reference("https-user:token@gitlab.com/project.git#package"))
+      assert.is_true(helper.is_flake_reference("ghe-company/repo#tool"))
+      assert.is_true(helper.is_flake_reference("gli-group/project#package"))
     end)
 
     it("should detect local path references", function()
@@ -218,6 +270,34 @@ describe("Helper module", function()
       assert.equal("github:nixos/nixpkgs", parsed.url)
       assert.equal("default", parsed.attribute)
       assert.equal("github:nixos/nixpkgs#default", parsed.full_ref)
+    end)
+
+    it("should parse custom git prefixes and convert them", function()
+      local parsed = helper.parse_flake_reference("gh-nixos/nixpkgs#hello")
+      assert.equal("github:nixos/nixpkgs", parsed.url)
+      assert.equal("hello", parsed.attribute)
+      assert.equal("github:nixos/nixpkgs#hello", parsed.full_ref)
+    end)
+
+    it("should parse custom SSH git URLs", function()
+      local parsed = helper.parse_flake_reference("ssh-git@company.com/repo.git#tool")
+      assert.equal("git+ssh://git@company.com/repo.git", parsed.url)
+      assert.equal("tool", parsed.attribute)
+      assert.equal("git+ssh://git@company.com/repo.git#tool", parsed.full_ref)
+    end)
+
+    it("should parse custom HTTPS git URLs", function()
+      local parsed = helper.parse_flake_reference("https-user:token@gitlab.com/project.git#package")
+      assert.equal("git+https://user:token@gitlab.com/project.git", parsed.url)
+      assert.equal("package", parsed.attribute)
+      assert.equal("git+https://user:token@gitlab.com/project.git#package", parsed.full_ref)
+    end)
+
+    it("should parse custom GitLab shorthand", function()
+      local parsed = helper.parse_flake_reference("gl-group/project#tool")
+      assert.equal("gitlab:group/project", parsed.url)
+      assert.equal("tool", parsed.attribute)
+      assert.equal("gitlab:group/project#tool", parsed.full_ref)
     end)
 
     it("should error on missing attribute if '#' is present but attribute is empty", function()
