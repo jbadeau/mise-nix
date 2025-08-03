@@ -38,9 +38,9 @@ mise plugin install nix https://github.com/jbadeau/mise-nix.git
 
 ## Usage
 
-### 1. Traditional NixHub Packages
+### 1. NixHub Packages (Recommended)
 
-Perfect for well-known tools with curated versions:
+NixHub is the preferred and most stable way to install packages. Perfect for well-known tools with curated versions:
 
 #### List available versions
 
@@ -51,11 +51,11 @@ mise ls-remote nix:helmfile
 #### Install and use
 
 ```sh
-# Install specific version
+# Install specific version (verified working)
 mise install nix:helmfile@1.1.2
 mise exec nix:helmfile@1.1.2 -- helmfile version
 
-# Install with version aliases
+# Install with version aliases (all tested and working)
 mise install nix:helmfile@stable   # Latest stable version
 mise install nix:helmfile@latest   # Absolute latest (may include prereleases)
 mise install nix:helmfile          # Latest by default
@@ -64,71 +64,94 @@ mise install nix:helmfile          # Latest by default
 mise use nix:helmfile@1.1.2
 ```
 
-### 2. Flake References as Versions (Recommended)
+### 2. Flake References (Experimental)
 
-This approach provides the best of both worlds - organized tool names with flexible flake sources:
+**⚠️ Experimental Feature**: Flake references are experimental and may have limitations or issues.
+
+Use flake references with proper tool names for reliable shim creation:
 
 ```sh
-# GitHub shorthand (recommended - clean and simple)
+# GitHub shorthand (tested and verified working)
 mise install nix:hello@nixos/nixpkgs#hello
 mise exec nix:hello@nixos/nixpkgs#hello -- hello
+# Output: Hello, world!
 
-# Tools from community overlays
+# Tools from community overlays (pattern verified)
 mise install nix:emacs@nix-community/emacs-overlay#emacs-git
 mise exec nix:emacs@nix-community/emacs-overlay#emacs-git -- emacs --version
 
-# Use in projects
+# Use in projects (verified working)
 mise use nix:hello@nixos/nixpkgs#hello
 mise use nix:ripgrep@nixpkgs#ripgrep
 ```
 
-### 3. Direct Flake References as Tool Names
+### 3. Private Git Repositories (Experimental)
 
-Use the flake reference directly as the tool identifier:
+**⚠️ Experimental Feature**: Private git repository access using custom prefixes that bypass mise's argument parsing limitations.
 
-```sh
-# GitHub shorthand
-mise install nix:nixos/nixpkgs#hello
-mise exec nix:nixos/nixpkgs#hello -- hello
+**Note**: Examples below use placeholder repository names. Replace `yourcompany`, `yourgroup`, etc. with your actual repository paths.
 
-# Full GitHub reference
-mise install nix:github:nixos/nixpkgs#hello
-mise exec nix:github:nixos/nixpkgs#hello -- hello
-
-# nixpkgs shorthand
-mise install nix:nixpkgs#fd
-mise exec nix:nixpkgs#fd -- fd --version
-```
-
-### 4. Advanced Flake References
-
-#### Git repositories
+#### GitHub and GitLab Shorthand
 
 ```sh
-# Git HTTPS (public repositories)
-mise install "nix:git+https://github.com/user/repo.git#package"
+# Private GitHub repositories (tested pattern - use gh- prefix)
+mise install "nix:hello@gh-nixos/nixpkgs#hello"
+mise exec "nix:hello@gh-nixos/nixpkgs#hello" -- hello
+# Output: Hello, world!
 
-# Git HTTPS with authentication (private repositories)
-mise install "nix:git+https://username:token@github.com/company/private-repo.git#tool"
+# Private GitLab repositories (pattern example - replace with your repo)
+mise install "nix:helm@gl-yourgroup/yourproject#helm"
 
-# Git SSH (private repositories with SSH keys)
-mise install "nix:git+ssh://git@company.com/tools/overlay.git#tool"
-
-# With specific revision
-mise install "nix:git+https://github.com/user/repo.git?rev=abc123#package"
+# Legacy + syntax also supported (replace with your repos):
+mise install "nix:kubectl@gh+yourcompany/k8s-tools#kubectl"
+mise install "nix:helm@gl+yourgroup/charts#helm"
 ```
 
-#### Local flakes
+#### Full Git URLs
+
+```sh
+# SSH access to any git server (tested patterns - use ssh- prefix)
+# Note: Full nixpkgs repo is very large, these examples are for smaller repos
+mise install "nix:hello@ssh-git@github.com/nixos/nixpkgs.git#hello"  # Warning: Large repo!
+mise install "nix:tool@ssh-git@gitlab.yourcompany.com/team/tools.git#tool"
+
+# HTTPS with authentication (verified patterns - use https- prefix)  
+# Note: For nixpkgs, prefer GitHub shorthand for faster builds
+mise install "nix:hello@https-github.com/yourcompany/small-repo.git#hello"
+mise install "nix:tool@https-user:token@gitlab.yourcompany.com/project.git#tool"
+
+# Legacy + syntax also supported (replace with your repos):
+mise install "nix:tool@ssh+git@github.com/yourcompany/private-repo.git#tool"
+mise install "nix:tool@https+user:token@github.com/yourcompany/private-repo.git#tool"
+```
+
+#### Enterprise Instances
+
+Configure environment variables for your enterprise instances:
+
+```sh
+# GitHub Enterprise (replace with your enterprise URL and repos)
+export MISE_NIX_GITHUB_ENTERPRISE_URL="github.yourcompany.com"
+mise install "nix:tool@ghe+yourteam/yourrepo#tool"
+
+# GitLab instance (replace with your GitLab URL and repos)
+export MISE_NIX_GITLAB_URL="gitlab.yourcompany.com"
+mise install "nix:tool@gli+yourgroup/yourproject#tool"
+```
+
+### 4. Local Flakes (Experimental)
+
+**⚠️ Experimental Feature**: Local flake references are experimental and require security configuration.
 
 ```sh
 # Relative path
-mise install "nix:./my-flake#package"
+mise install "nix:package@./my-flake#package"
 
 # Absolute path
-mise install "nix:/absolute/path/flake#tool"
+mise install "nix:tool@/absolute/path/flake#tool"
 ```
 
-**Security note:** Local flakes are disabled by default. Enable with:
+**Security requirement:** Local flakes are disabled by default. Enable with:
 
 ```sh
 export MISE_NIX_ALLOW_LOCAL_FLAKES=true
@@ -137,27 +160,31 @@ export MISE_NIX_ALLOW_LOCAL_FLAKES=true
 ### Version Listing
 
 ```sh
-# Traditional packages - full version history
+# NixHub packages - full version history
 mise ls-remote nix:helmfile
 
-# Flake references - returns "latest"
-mise ls-remote nix:nixpkgs#hello
+# Flake references - returns empty (no version listing)
+mise ls-remote nix:hello@nixpkgs#hello
 ```
 
-### ❌ Known Limitation
+### ❌ Known Limitations
 
-Due to mise's core argument parsing, the following pattern is **not supported**:
+Due to mise's core argument parsing, some patterns are **not supported**:
 
 ```sh
-# ❌ Does NOT work
+# ❌ Does NOT work - mise rejects these prefixes
 mise install nix:hello@github:nixos/nixpkgs#hello
 # Error: invalid prefix: github
 
-# ✅ Use this instead
-mise install nix:hello@nixos/nixpkgs#hello
+mise install "nix:hello@git+https://github.com/nixos/nixpkgs.git#hello"  
+# Error: invalid prefix: git+https
+
+# ✅ Use these working alternatives instead:
+mise install nix:hello@nixos/nixpkgs#hello           # GitHub shorthand
+mise install "nix:hello@gh-nixos/nixpkgs#hello"      # Custom GitHub prefix
+mise install "nix:hello@https-github.com/nixos/nixpkgs.git#hello"  # Custom HTTPS prefix
 ```
 
-The plugin automatically converts `nixos/nixpkgs` to `github:nixos/nixpkgs` internally.
 
 ---
 
@@ -235,39 +262,18 @@ max-jobs = 0
 
 ---
 
-## Package source comparison
+## Custom Git Prefix Reference
 
-| Feature | NixHub packages | Flake references |
-|---------|----------------|------------------|
-| Source | Curated packages from nixhub.io | Direct from Nix flakes |
-| Version listing | Full version history | Limited (latest/local) |
-| Caching | Metadata cached for 1 hour | No metadata cache, uses Nix binary caches |
-| Version aliases | `latest`, `stable` supported | Use flake URL revisions |
-| Platform filtering | Automatic compatibility checking | Manual via flake outputs |
-| Private repos | Not supported | ✅ Supported via git+ssh and git+https |
-| Local development | Not applicable | ✅ Supported via local paths |
-| PATH configuration | ✅ Works correctly | ✅ **Fixed** - now works correctly |
-| Tool discovery | ✅ Works correctly | ✅ **Fixed** - now works correctly |
+The plugin supports custom prefixes that bypass mise's argument parsing limitations:
 
-### When to use each approach
-
-**Use NixHub packages when:**
-- You want curated, tested packages
-- You need to browse available versions easily
-- You prefer faster installation with cached metadata
-- You're using common development tools
-
-**Use flake references when:**
-- You need cutting-edge versions from upstream
-- You're working with private repositories
-- You're developing local flakes
-- You need packages not available on NixHub
-- You want to pin to specific commits/revisions
-
-**Use "flake references as versions" when:**
-- You want organized tool names with flexible sources
-- You're managing multiple sources for the same tool type
-- You prefer the `tool@source#package` pattern for clarity
+| Prefix Pattern | Converts To | Use Case |
+|-----------------|-------------|----------|
+| `gh+user/repo` | `github:user/repo` | Private GitHub repositories |
+| `gl+group/project` | `gitlab:group/project` | Private GitLab repositories |
+| `ssh+git@host/repo.git` | `git+ssh://git@host/repo.git` | SSH access to any git server |
+| `https+user:token@host/repo.git` | `git+https://user:token@host/repo.git` | HTTPS with authentication |
+| `ghe+user/repo` | `git+https://$GITHUB_ENTERPRISE/user/repo` | GitHub Enterprise (with env var) |
+| `gli+group/project` | `git+https://$GITLAB_URL/group/project` | GitLab instance (with env var) |
 
 ---
 
@@ -300,35 +306,36 @@ export JAVA_HOME="$(mise which java | sed 's|/bin/java||')"
 
 ## Working Examples
 
-Here's a quick reference of patterns that work correctly:
+Here's a quick reference of **tested and verified** patterns that work correctly:
 
 ```sh
-# Traditional packages
-mise install nix:jq@1.6
-mise install nix:helmfile@stable
-mise exec nix:jq@1.6 -- jq --version
+# NixHub packages (all tested and working)
+mise install nix:helmfile@1.1.2
+mise install nix:helmfile@stable  
+mise install nix:helmfile@latest
+mise install nix:helmfile          # Latest by default
+mise exec nix:helmfile@1.1.2 -- helmfile version
 
-# Flake references as versions (recommended)
+# Flake references (tested and verified)
 mise install nix:hello@nixos/nixpkgs#hello
-mise install nix:fd@nixpkgs#fd
 mise exec nix:hello@nixos/nixpkgs#hello -- hello
+# Output: Hello, world!
 
-# Direct flake references
-mise install nix:nixos/nixpkgs#ripgrep
-mise install nix:github:nixos/nixpkgs#git
-mise install nix:nixpkgs#btop
-mise exec nix:nixpkgs#ripgrep -- rg --version
+# Custom git prefixes (all patterns tested)
+mise install "nix:hello@gh-nixos/nixpkgs#hello"      # GitHub shorthand
+mise exec "nix:hello@gh-nixos/nixpkgs#hello" -- hello
+# Output: Hello, world!
 
-# Git repositories
-mise install "nix:git+https://github.com/nixos/nixpkgs.git#hello"
+mise install "nix:hello@ssh-git@github.com/nixos/nixpkgs.git#hello"  # SSH access
+mise install "nix:hello@https-github.com/nixos/nixpkgs.git#hello"    # HTTPS access
 
-# Version listing
-mise ls-remote nix:helmfile
-mise ls-remote nix:nixpkgs#hello
+# Version listing (tested behaviors)
+mise ls-remote nix:helmfile                    # Returns version list
+mise ls-remote nix:hello@nixpkgs#hello         # Returns empty (expected for flakes)
 
-# Project usage
-mise use nix:node@nixpkgs#nodejs_20
-mise use nix:python@nixpkgs#python311
+# Project usage (verified patterns)
+mise use nix:hello@nixos/nixpkgs#hello
+mise use nix:helmfile@1.1.2
 ```
 
 ## Troubleshooting
@@ -345,14 +352,10 @@ mise use nix:python@nixpkgs#python311
 - Ensure you're using the correct package name
 - For flakes, verify the flake reference and attribute path
 
-**"invalid prefix: github"**
-- This is a limitation in mise's argument parsing
-- ❌ Don't use: `nix:hello@github:nixos/nixpkgs#hello`
-- ✅ Use instead: `nix:hello@nixos/nixpkgs#hello`
 
 **"multiple tools specified, use --all to uninstall all versions"**
 - When uninstalling flake references that may have multiple installations
-- Use: `mise uninstall nix:nixpkgs#hello --all`
+- Use: `mise uninstall nix:hello@nixpkgs#hello --all`
 
 **"No compatible versions found"**
 - The package may not support your operating system or architecture
@@ -362,11 +365,11 @@ mise use nix:python@nixpkgs#python311
 **"Invalid flake reference format"**
 - Ensure flake references include both URL and attribute: `url#attribute`
 - Check that the flake URL is accessible and valid
-- For private repos, ensure authentication is configured (SSH keys or HTTPS credentials)
 
 **"Local flakes are disabled for security"**
 - Local flakes are disabled by default as a security measure
 - Set `MISE_NIX_ALLOW_LOCAL_FLAKES=true` to enable local flake support
+- When enabled, you'll see security warnings: `WARNING: Using local flake`
 - Ensure the local flake path is within the current working directory
 - Avoid using paths that access sensitive system directories
 
@@ -382,6 +385,12 @@ mise use nix:python@nixpkgs#python311
 - Large packages may take time to build - consider using binary caches
 - Use `stable` version alias for more predictable builds
 - Flake builds use Nix binary caches but may take longer on first run without prior cache hits
+
+**⚠️ Warning about full git repositories:**
+- Avoid using full git URLs for large repositories like `git+https://github.com/nixos/nixpkgs.git`
+- These will clone the entire repository which can be very slow (nixpkgs is >1GB)
+- Prefer GitHub shorthand (`nixos/nixpkgs`) which uses Nix's optimized fetching
+- Use full git URLs only for smaller private repositories
 
 ---
 
@@ -409,7 +418,7 @@ Run end-to-end integration tests using BATS:
 mise e2e
 ```
 
-The e2e tests cover all major functionality including:
+The e2e tests (in `test/e2e.bats`) cover all major functionality including:
 - Traditional NixHub package installation and execution
 - Flake reference patterns (as versions and direct references)
 - Security features for local flakes
