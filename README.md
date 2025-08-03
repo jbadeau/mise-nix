@@ -82,7 +82,7 @@ mise install "nix:package@./my-flake#package"
 
 ## Nix Configuration
 
-Add to `/etc/nix/nix.conf`:
+Add to `~/.config/nix/nix.conf`:
 
 ```ini
 experimental-features = nix-command flakes
