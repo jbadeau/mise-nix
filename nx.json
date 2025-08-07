@@ -1,6 +1,5 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "neverConnectToCloud": false,
   "release": {
     "projects": ["."],
     "projectsRelationship": "fixed",
@@ -23,7 +22,7 @@
     "production": ["default"],
     "sharedGlobals": ["{workspaceRoot}/.github/workflows/ci.yml"]
   },
-  "nxCloudId": "688e235986cc2954254f3c39",
+  "nxCloudId": "68947252a3fca42f2a9db759",
   "plugins": [
     {
       "plugin": "@nx/js/typescript",
