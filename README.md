@@ -4,7 +4,7 @@
 
 ## Why use this plugin?
 
-- 🚀 Access 100,000+ packages from Nixpkgs.
+- 🚀 Access to 100,000+ packages.
 - ⚡ Enjoy all the power of Nix without the complexity. Mise handles the heavy lifting while you focus on development.
 - 🔧 Seamlessly integrates with your existing Mise workflow. Mix and match Nix packages with other Mise backends.
 
