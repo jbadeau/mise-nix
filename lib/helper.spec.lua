@@ -119,18 +119,148 @@ describe("Helper module", function()
   end)
 
   describe("get_nixhub_base_url", function()
-    it("should return a valid base URL", function()
+    it("should return default nixhub.io URL", function()
+      -- Mock os.getenv to return nil (no custom URL set)
+      local original_getenv = os.getenv
+      os.getenv = function(var)
+        if var == "MISE_NIX_NIXHUB_BASE_URL" then
+          return nil
+        end
+        return original_getenv(var)
+      end
+      
       local base_url = helper.get_nixhub_base_url()
-      assert.is_true(type(base_url) == "string")
-      assert.is_not_nil(base_url:match("^https?://"))
+      assert.equal("https://www.nixhub.io", base_url)
+      
+      -- Restore original function
+      os.getenv = original_getenv
+    end)
+    
+    it("should use MISE_NIX_NIXHUB_BASE_URL when set", function()
+      -- Mock os.getenv to return custom URL
+      local original_getenv = os.getenv
+      os.getenv = function(var)
+        if var == "MISE_NIX_NIXHUB_BASE_URL" then
+          return "https://custom-nixhub.example.com"
+        end
+        return original_getenv(var)
+      end
+      
+      local base_url = helper.get_nixhub_base_url()
+      assert.equal("https://custom-nixhub.example.com", base_url)
+      
+      -- Restore original function
+      os.getenv = original_getenv
     end)
   end)
 
   describe("get_nixpkgs_repo_url", function()
-    it("should return a GitHub repo URL", function()
+    it("should return default NixOS/nixpkgs repo URL", function()
+      -- Mock os.getenv to return nil (no custom URL set)
+      local original_getenv = os.getenv
+      os.getenv = function(var)
+        if var == "MISE_NIX_NIXPKGS_REPO_URL" then
+          return nil
+        end
+        return original_getenv(var)
+      end
+      
       local repo_url = helper.get_nixpkgs_repo_url()
-      assert.is_true(type(repo_url) == "string")
-      assert.is_not_nil(repo_url:match("github.com"))
+      assert.equal("https://github.com/NixOS/nixpkgs", repo_url)
+      
+      -- Restore original function
+      os.getenv = original_getenv
+    end)
+    
+    it("should use MISE_NIX_NIXPKGS_REPO_URL when set", function()
+      -- Mock os.getenv to return custom repo URL
+      local original_getenv = os.getenv
+      os.getenv = function(var)
+        if var == "MISE_NIX_NIXPKGS_REPO_URL" then
+          return "https://github.com/custom/nixpkgs"
+        end
+        return original_getenv(var)
+      end
+      
+      local repo_url = helper.get_nixpkgs_repo_url()
+      assert.equal("https://github.com/custom/nixpkgs", repo_url)
+      
+      -- Restore original function
+      os.getenv = original_getenv
+    end)
+  end)
+
+  describe("allow_local_flakes", function()
+    it("should return false by default", function()
+      -- Mock os.getenv to return nil (not set)
+      local original_getenv = os.getenv
+      os.getenv = function(var)
+        if var == "MISE_NIX_ALLOW_LOCAL_FLAKES" then
+          return nil
+        end
+        return original_getenv(var)
+      end
+      
+      local allowed = helper.allow_local_flakes()
+      assert.is_false(allowed)
+      
+      -- Restore original function
+      os.getenv = original_getenv
+    end)
+    
+    it("should return false when set to false", function()
+      -- Mock os.getenv to return "false"
+      local original_getenv = os.getenv
+      os.getenv = function(var)
+        if var == "MISE_NIX_ALLOW_LOCAL_FLAKES" then
+          return "false"
+        end
+        return original_getenv(var)
+      end
+      
+      local allowed = helper.allow_local_flakes()
+      assert.is_false(allowed)
+      
+      -- Restore original function
+      os.getenv = original_getenv
+    end)
+    
+    it("should return true only when set to 'true'", function()
+      -- Mock os.getenv to return "true"
+      local original_getenv = os.getenv
+      os.getenv = function(var)
+        if var == "MISE_NIX_ALLOW_LOCAL_FLAKES" then
+          return "true"
+        end
+        return original_getenv(var)
+      end
+      
+      local allowed = helper.allow_local_flakes()
+      assert.is_true(allowed)
+      
+      -- Restore original function
+      os.getenv = original_getenv
+    end)
+    
+    it("should return false for other values", function()
+      -- Mock os.getenv to return other values
+      local original_getenv = os.getenv
+      local test_values = {"TRUE", "1", "yes", "on", "enabled"}
+      
+      for _, value in ipairs(test_values) do
+        os.getenv = function(var)
+          if var == "MISE_NIX_ALLOW_LOCAL_FLAKES" then
+            return value
+          end
+          return original_getenv(var)
+        end
+        
+        local allowed = helper.allow_local_flakes()
+        assert.is_false(allowed, "Should return false for value: " .. value)
+      end
+      
+      -- Restore original function
+      os.getenv = original_getenv
     end)
   end)
 
@@ -174,6 +304,76 @@ describe("Helper module", function()
     it("should handle nil and empty inputs", function()
       assert.is_nil(helper.convert_custom_git_prefix(nil))
       assert.equal("", helper.convert_custom_git_prefix(""))
+    end)
+    
+    describe("with enterprise URLs", function()
+      it("should handle GitHub Enterprise with ghe+ prefix", function()
+        -- Mock environment variables
+        local original_getenv = os.getenv
+        os.getenv = function(var)
+          if var == "MISE_NIX_GITHUB_ENTERPRISE_URL" then
+            return "github.company.com"
+          end
+          return original_getenv(var)
+        end
+        
+        local result = helper.convert_custom_git_prefix("ghe+user/repo")
+        assert.equal("git+https://github.company.com/user/repo", result)
+        
+        -- Restore original function
+        os.getenv = original_getenv
+      end)
+      
+      it("should handle GitLab Enterprise with gli+ prefix", function()
+        -- Mock environment variables
+        local original_getenv = os.getenv
+        os.getenv = function(var)
+          if var == "MISE_NIX_GITLAB_ENTERPRISE_URL" then
+            return "gitlab.company.com"
+          end
+          return original_getenv(var)
+        end
+        
+        local result = helper.convert_custom_git_prefix("gli+group/project")
+        assert.equal("git+https://gitlab.company.com/group/project", result)
+        
+        -- Restore original function
+        os.getenv = original_getenv
+      end)
+      
+      it("should handle legacy GitHub Enterprise with ghe- prefix", function()
+        -- Mock environment variables
+        local original_getenv = os.getenv
+        os.getenv = function(var)
+          if var == "MISE_NIX_GITHUB_ENTERPRISE_URL" then
+            return "github.company.com"
+          end
+          return original_getenv(var)
+        end
+        
+        local result = helper.convert_custom_git_prefix("ghe-user/repo")
+        assert.equal("git+https://github.company.com/user/repo", result)
+        
+        -- Restore original function
+        os.getenv = original_getenv
+      end)
+      
+      it("should not transform enterprise prefixes when env vars not set", function()
+        -- Mock environment variables to return nil
+        local original_getenv = os.getenv
+        os.getenv = function(var)
+          if var == "MISE_NIX_GITHUB_ENTERPRISE_URL" or var == "MISE_NIX_GITLAB_ENTERPRISE_URL" then
+            return nil
+          end
+          return original_getenv(var)
+        end
+        
+        assert.equal("ghe+user/repo", helper.convert_custom_git_prefix("ghe+user/repo"))
+        assert.equal("gli+group/project", helper.convert_custom_git_prefix("gli+group/project"))
+        
+        -- Restore original function
+        os.getenv = original_getenv
+      end)
     end)
   end)
 
