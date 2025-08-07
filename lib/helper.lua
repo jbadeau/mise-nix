@@ -187,7 +187,7 @@ function M.convert_custom_git_prefix(version)
   
   -- Custom enterprise instances via environment variables
   local github_enterprise = os.getenv("MISE_NIX_GITHUB_ENTERPRISE_URL")
-  local gitlab_instance = os.getenv("MISE_NIX_GITLAB_URL")
+  local gitlab_instance = os.getenv("MISE_NIX_GITLAB_ENTERPRISE_URL")
   
   -- GitHub Enterprise shorthand: ghe+user/repo
   if github_enterprise and version:match("^ghe%+") then
