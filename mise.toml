@@ -2,8 +2,9 @@
 LUA_PATH="lib/?.lua;;"
 
 [tools]
-lua = "5.4.7"
-node = "20.19.4"
+lua = "5.4.8"
+"nix:helmfile" = "1.1.2"
+node = "24.5.0"
 
 [tasks.init]
 description = "init"
