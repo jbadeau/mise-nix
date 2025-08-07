@@ -4,10 +4,9 @@
 
 ## Why use this plugin?
 
-- **Reproducible environments**: Pin tools to exact versions with Nix's deterministic builds
-- **Massive package selection**: Access to 100,000+ Nix packages
-- **Cross-platform consistency**: Same tools and versions across Linux, macOS, and other platforms
-- **Private repository support**: Install tools from your company's private Git repositories
+- 🚀 Access 100,000+ packages from Nixpkgs—one of the largest and most up-to-date package repositories available.
+- ⚡ Enjoy all the power of Nix without the complexity. Mise handles the heavy lifting while you focus on development.
+- 🔧 Seamlessly integrates with your existing Mise workflow. Mix and match Nix packages with other Mise backends.
 
 ## Prerequisites
 
