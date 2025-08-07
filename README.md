@@ -125,7 +125,7 @@ export MISE_NIX_ALLOW_LOCAL_FLAKES=true
 
 # Enterprise Git instances
 export MISE_NIX_GITHUB_ENTERPRISE_URL="github.company.com"
-export MISE_NIX_GITLAB_URL="gitlab.company.com"
+export MISE_NIX_GITLAB_ENTERPRISE_URL="gitlab.company.com"
 ```
 
 ## Performance Notes
