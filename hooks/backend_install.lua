@@ -57,7 +57,9 @@ local function install_from_nixhub(tool, requested_version, install_path)
     error("No platform build found for version " .. target_release.version)
   end
 
-  local ref = string.format("github:NixOS/nixpkgs/%s#%s", platform.commit_hash, platform.attribute_path)
+  local nixpkgs_url = helper.get_nixpkgs_repo_url()
+  local repo_ref = nixpkgs_url:gsub("https://github.com/", "github:")
+  local ref = string.format("%s/%s#%s", repo_ref, platform.commit_hash, platform.attribute_path)
   local cmdline = string.format("nix build --no-link --print-out-paths '%s'", ref)
 
   print("🔨 Building " .. tool .. "@" .. target_release.version .. "...")

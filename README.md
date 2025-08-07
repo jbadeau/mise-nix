@@ -117,6 +117,9 @@ mise install "nix:hello@gh-nixos/nixpkgs#hello"
 # Custom NixHub instance
 export MISE_NIX_NIXHUB_BASE_URL="https://custom-nixhub.example.com"
 
+# Custom NixPkgs repository
+export MISE_NIX_NIXPKGS_REPO_URL="https://github.com/custom/nixpkgs"
+
 # Enable local flakes (security risk)
 export MISE_NIX_ALLOW_LOCAL_FLAKES=true
 
