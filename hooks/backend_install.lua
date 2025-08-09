@@ -2,6 +2,22 @@ local cmd = require("cmd")
 local json = require("json")
 local helper = require("helper")
 
+local function install_to_vscode(chosen_path, tool)
+  local vscode_ext_dir = os.getenv("HOME") .. "/.vscode/extensions"
+  cmd.exec("mkdir -p " .. vscode_ext_dir)
+  
+  -- Extract extension ID from the package name
+  local ext_id = tool:match("vscode%-extensions%.(.+)") or tool:match("^vscode%+install=vscode%-extensions%.(.+)") or tool
+  local target_dir = vscode_ext_dir .. "/" .. ext_id
+  
+  -- Remove existing and create symlink
+  cmd.exec(string.format('rm -rf "%s"', target_dir))
+  cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, target_dir))
+  
+  print("📦 Installed VSCode extension: " .. ext_id)
+  return true
+end
+
 local function resolve_version_alias(requested_version, compatible)
   if requested_version == "latest" or requested_version == "" then
     return compatible[#compatible]
@@ -81,9 +97,16 @@ local function install_from_nixhub(tool, requested_version, install_path)
 
   helper.verify_build(chosen_path, tool)
 
-  -- Remove any existing directory/symlink before creating new symlink
-  cmd.exec(string.format('rm -rf "%s"', install_path))
-  cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, install_path))
+  -- Check if it's a VSCode extension
+  if tool:match("^vscode%-extensions%.") then
+    print("🔍 Detected VSCode extension: " .. tool)
+    install_to_vscode(chosen_path, tool)
+  else
+    -- Standard mise tool installation
+    print("🔧 Installing as standard tool: " .. tool)
+    cmd.exec(string.format('rm -rf "%s"', install_path))
+    cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, install_path))
+  end
 
   print("✅ Successfully installed " .. tool .. "@" .. target_release.version)
   return target_release.version
@@ -93,29 +116,50 @@ local function install_from_flake(flake_ref, version, install_path)
   local outputs, built_ref = helper.build_flake(flake_ref, version)
 
   local chosen_path, has_bin = helper.choose_store_path_with_bin(outputs)
+  
+  -- Check if it's a VSCode extension first to provide appropriate messaging
+  local is_vscode_ext = flake_ref:match("vscode%-extensions%.") or flake_ref:match("^vscode%+install=vscode%-extensions%.")
+  
   if not has_bin then
-    print("⚠️  No binaries found. This package may be a library.")
-    print("ℹ️  Falling back to the first available output for linking or use in build environments.")
+    if is_vscode_ext then
+      print("📦 VSCode extension package (no CLI binaries expected)")
+    else
+      print("⚠️  No binaries found. This package may be a library.")
+      print("ℹ️  Falling back to the first available output for linking or use in build environments.")
+    end
   end
 
   helper.verify_build(chosen_path, flake_ref)
 
-  -- Remove any existing directory/symlink before creating new symlink
-  cmd.exec(string.format('rm -rf "%s"', install_path))
-  cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, install_path))
+  -- Check if it's a VSCode extension
+  if is_vscode_ext then
+    print("🔍 Detected VSCode extension flake: " .. flake_ref)
+    install_to_vscode(chosen_path, flake_ref)
+  else
+    -- Standard mise tool installation
+    print("🔧 Installing as standard flake tool: " .. flake_ref)
+    cmd.exec(string.format('rm -rf "%s"', install_path))
+    cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, install_path))
 
-  -- WORKAROUND: mise expects a directory named after the nix store hash for direct flake references
-  -- Extract the nix store hash from the chosen_path and create an additional symlink
-  local nix_hash = chosen_path:match("/nix/store/([^/]+)")
-  if nix_hash then
-    local install_dir = install_path:match("^(.+)/[^/]+$") -- Get parent directory
-    local hash_path = install_dir .. "/" .. nix_hash
-    cmd.exec(string.format('rm -rf "%s"', hash_path))
-    cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, hash_path))
+    -- WORKAROUND: mise expects a directory named after the nix store hash for direct flake references
+    -- Extract the nix store hash from the chosen_path and create an additional symlink
+    local nix_hash = chosen_path:match("/nix/store/([^/]+)")
+    if nix_hash then
+      local install_dir = install_path:match("^(.+)/[^/]+$") -- Get parent directory
+      local hash_path = install_dir .. "/" .. nix_hash
+      cmd.exec(string.format('rm -rf "%s"', hash_path))
+      cmd.exec(string.format('ln -sfn "%s" "%s"', chosen_path, hash_path))
+    end
   end
 
   print("✅ Successfully installed " .. built_ref)
-  return flake_ref
+  
+  -- Return both the flake_ref and chosen_path for VSCode extensions
+  if flake_ref:match("vscode%-extensions%.") or flake_ref:match("^vscode%+install=vscode%-extensions%.") then
+    return flake_ref, chosen_path
+  else
+    return flake_ref
+  end
 end
 
 function PLUGIN:BackendInstall(ctx)
@@ -123,22 +167,81 @@ function PLUGIN:BackendInstall(ctx)
   local requested_version = ctx.version
   local install_path = ctx.install_path
 
+  
   helper.check_nix_available()
 
+  local result_version
+  local nix_store_path = nil
+
+  -- Check if it's a VSCode extension - treat as flake reference
+  if tool:match("^vscode%-extensions%.") then
+    local flake_ref = "nixpkgs#" .. tool
+    result_version, nix_store_path = install_from_flake(flake_ref, requested_version, install_path)
+  elseif tool:match("^vscode%+install=vscode%-extensions%.") then
+    -- Handle vscode+install=vscode-extensions.publisher.extension syntax
+    result_version, nix_store_path = install_from_flake(tool, requested_version, install_path)
   -- Check if either the tool or version is a flake reference
-  -- If ctx.tool is a flake reference, we treat ctx.version as the specific version/commit for that flake
-  -- If ctx.version is a flake reference (like "owner/repo#package"), we use that as the complete flake reference
-  -- Otherwise, ctx.version is a traditional version string for nixhub.io
-  if helper.is_flake_reference(tool) then
-    local version = install_from_flake(tool, requested_version, install_path)
-    return { version = version }
+  elseif helper.is_flake_reference(tool) then
+    result_version = install_from_flake(tool, requested_version, install_path)
   elseif helper.is_flake_reference(requested_version) then
-    -- The version itself is a flake reference (e.g., "nix-community/emacs-overlay#emacs-git")
-    local version = install_from_flake(requested_version, "", install_path)
-    return { version = version }
+    result_version = install_from_flake(requested_version, "", install_path)
   else
-    local version = install_from_nixhub(tool, requested_version, install_path)
-    return { version = version }
+    result_version = install_from_nixhub(tool, requested_version, install_path)
   end
+
+  -- Post-install: If it's a VSCode extension, install via marketplace with Nix version pinning
+  if (tool:match("^vscode%-extensions%.") or tool:match("^vscode%+install=vscode%-extensions%.")) and nix_store_path then
+    local ext_id = tool:match("vscode%-extensions%.(.+)") or tool:match("^vscode%+install=vscode%-extensions%.(.+)")
+    
+    -- The actual extension is in share/vscode/extensions/{ext_id}/ within the nix store
+    local actual_ext_path = nix_store_path .. "/share/vscode/extensions/" .. ext_id
+    
+    -- Create VSIX file for backup/offline use (stored in mise install directory)
+    local vsix_filename = tool:gsub("%.", "-") .. ".vsix"
+    local vsix_path = install_path .. "/" .. vsix_filename
+    
+    -- Create VSIX by zipping the extension directory contents
+    local zip_cmd = string.format('cd "%s" && zip -r "%s" * -x "*.DS_Store"', actual_ext_path, vsix_path)
+    local zip_success, zip_output = pcall(function()
+      return cmd.exec(zip_cmd)
+    end)
+    
+    if not zip_success then
+      print("⚠️  VSIX backup creation failed (continuing anyway)")
+    end
+    
+    -- Install via marketplace (most reliable method)
+    local install_cmd = string.format('code --install-extension "%s"', ext_id)
+    
+    local install_success, install_output = pcall(function()
+      return cmd.exec(install_cmd)
+    end)
+    
+    if install_success then
+      print("✅ VSCode extension installed successfully")
+      if install_output and install_output ~= "" then
+        -- Print success message from VSCode
+        local lines = {}
+        for line in install_output:gmatch("[^\n]+") do
+          if line:match("successfully installed") or line:match("Extension.*installed") then
+            table.insert(lines, "   " .. line)
+          end
+        end
+        if #lines > 0 then
+          for _, line in ipairs(lines) do
+            print(line)
+          end
+        end
+      end
+      print("💡 Extension version managed by Nix (" .. result_version .. "), installed via marketplace")
+    else
+      print("❌ VSCode marketplace installation failed")
+      if zip_success then
+        print("💡 VSIX backup available at: " .. vsix_path)
+      end
+    end
+  end
+
+  return { version = result_version }
 
 end
