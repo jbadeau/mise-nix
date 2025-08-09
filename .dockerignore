@@ -1,0 +1,17 @@
+# Docker ignore file for e2e tests
+.git
+node_modules
+*.log
+.DS_Store
+coverage
+report
+.mise/
+.local/
+Library/
+# Keep these for testing
+!spec/
+!hooks/
+!lib/
+!metadata.lua
+!mise.toml
+!.shellspec

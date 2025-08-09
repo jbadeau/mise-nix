@@ -147,69 +147,22 @@ function M.convert_custom_git_prefix(version)
     return "git+https://" .. path
   end
   
-  -- GitHub shorthand: gh+user/repo -> github:user/repo
-  if version:match("^gh%+[%w%-_%.]+/[%w%-_%.]+") then
-    local path = version:gsub("^gh%+", "")
+  -- GitHub shorthand: github+user/repo -> github:user/repo
+  if version:match("^github%+[%w%-_%.]+/[%w%-_%.]+") then
+    local path = version:gsub("^github%+", "")
     return "github:" .. path
   end
   
-  -- GitLab shorthand: gl+group/project -> gitlab:group/project  
-  if version:match("^gl%+[%w%-_%.]+/[%w%-_%.]+") then
-    local path = version:gsub("^gl%+", "")
+  -- GitLab shorthand: gitlab+group/project -> gitlab:group/project  
+  if version:match("^gitlab%+[%w%-_%.]+/[%w%-_%.]+") then
+    local path = version:gsub("^gitlab%+", "")
     return "gitlab:" .. path
   end
   
-  -- Legacy patterns (keep for backward compatibility)
-  
-  -- GitHub shorthand: gh-user/repo -> github:user/repo
-  if version:match("^gh%-[%w%-_%.]+/[%w%-_%.]+") then
-    local path = version:gsub("^gh%-", "")
-    return "github:" .. path
-  end
-  
-  -- GitLab shorthand: gl-group/project -> gitlab:group/project  
-  if version:match("^gl%-[%w%-_%.]+/[%w%-_%.]+") then
-    local path = version:gsub("^gl%-", "")
-    return "gitlab:" .. path
-  end
-  
-  -- SSH URLs: ssh-git@... -> git+ssh://git@...
-  if version:match("^ssh%-") then
-    local path = version:gsub("^ssh%-", "")
-    return "git+ssh://" .. path
-  end
-  
-  -- HTTPS URLs: https-... -> git+https://...
-  if version:match("^https%-") then
-    local path = version:gsub("^https%-", "")
-    return "git+https://" .. path
-  end
-  
-  -- Custom enterprise instances via environment variables
-  local github_enterprise = os.getenv("MISE_NIX_GITHUB_ENTERPRISE_URL")
-  local gitlab_instance = os.getenv("MISE_NIX_GITLAB_ENTERPRISE_URL")
-  
-  -- GitHub Enterprise shorthand: ghe+user/repo
-  if github_enterprise and version:match("^ghe%+") then
-    local path = version:gsub("^ghe%+", "")
-    return "git+https://" .. github_enterprise .. "/" .. path
-  end
-  
-  -- GitLab instance shorthand: gli+group/project  
-  if gitlab_instance and version:match("^gli%+") then
-    local path = version:gsub("^gli%+", "")
-    return "git+https://" .. gitlab_instance .. "/" .. path
-  end
-  
-  -- Legacy enterprise patterns
-  if github_enterprise and version:match("^ghe%-") then
-    local path = version:gsub("^ghe%-", "")
-    return "git+https://" .. github_enterprise .. "/" .. path
-  end
-  
-  if gitlab_instance and version:match("^gli%-") then
-    local path = version:gsub("^gli%-", "")
-    return "git+https://" .. gitlab_instance .. "/" .. path
+  -- SourceHut shorthand: sourcehut+owner/repo -> sourcehut:owner/repo
+  if version:match("^sourcehut%+[%w%-_%.]+/[%w%-_%.]+") then
+    local path = version:gsub("^sourcehut%+", "")
+    return "sourcehut:" .. path
   end
   
   return version
@@ -221,29 +174,15 @@ function M.is_flake_reference(tool)
 
   -- Check for flake reference patterns (including custom prefixes)
   local patterns = {
-    "^github:",           -- github:owner/repo#package
-    "^gitlab:",           -- gitlab:owner/repo#package
-    "^git%+https://",     -- git+https://...#package
-    "^git%+ssh://",       -- git+ssh://...#package
-    "^ssh%+",             -- ssh+host/repo.git#package (new syntax)
-    "^https%+",           -- https+host/repo.git#package (new syntax)
-    "^gh%+",              -- gh+owner/repo#package (new GitHub shorthand)
-    "^gl%+",              -- gl+group/project#package (new GitLab shorthand)
-    "^ghe%+",             -- ghe+owner/repo#package (new GitHub Enterprise)
-    "^gli%+",             -- gli+group/project#package (new GitLab instance)
-    "^gh%-",              -- gh-owner/repo#package (legacy GitHub shorthand)
-    "^gl%-",              -- gl-group/project#package (legacy GitLab shorthand)
-    "^ssh%-",             -- ssh-git@...#package (legacy SSH URLs)
-    "^https%-",           -- https-...#package (legacy HTTPS URLs)
-    "^ghe%-",             -- ghe-owner/repo#package (legacy GitHub Enterprise)
-    "^gli%-",             -- gli-group/project#package (legacy GitLab instance)
-    "^%.%./",             -- ../relative/path#package
-    "^%.?/",              -- ./relative/path#package (added for current dir relative paths)
-    "^/",                 -- /absolute/path#package
-    "^[%w%-_%.]+/[%w%-_%.]+#",  -- owner/repo#package (GitHub shorthand)
-    "^nixpkgs#",          -- nixpkgs#hello (common shorthand)
-    "^path:",             -- path:/some/path#package
-    "^file:",             -- file:/some/path#package
+    "^github%+",          -- github+owner/repo#package (GitHub shorthand)
+    "^gitlab%+",          -- gitlab+group/project#package (GitLab shorthand)  
+    "^sourcehut%+",       -- sourcehut+owner/repo#package (SourceHut shorthand)
+    "^vscode%+install=vscode%-extensions%.", -- vscode+install=vscode-extensions.publisher.extension (VSCode extension install)
+    "^git%+https://",     -- git+https://...#package (for tool@source only)
+    "^git%+ssh://",       -- git+ssh://...#package (for tool@source only)
+    "^ssh%+",             -- ssh+host/repo.git#package (for tool@source only)
+    "^https%+",           -- https+host/repo.git#package (for tool@source only)
+    "^vscode%-extensions%.", -- vscode-extensions.publisher.extension (normal package)
   }
 
   for _, pattern in ipairs(patterns) do
@@ -260,8 +199,28 @@ function M.is_flake_reference(tool)
   return false
 end
 
--- Parse flake reference into components
+-- Parse flake reference into components with enhanced ref support
 function M.parse_flake_reference(flake_ref)
+  -- Handle VSCode install syntax (vscode+install=vscode-extensions.publisher.extension)
+  if flake_ref:match("^vscode%+install=vscode%-extensions%.") then
+    local ext_package = flake_ref:gsub("^vscode%+install=", "")
+    return {
+      url = "nixpkgs",
+      attribute = ext_package,
+      full_ref = "nixpkgs#" .. ext_package,
+      install_mode = "vscode"
+    }
+  end
+  
+  -- Handle VSCode extensions directly (vscode-extensions.publisher.extension)
+  if flake_ref:match("^vscode%-extensions%.") then
+    return {
+      url = "nixpkgs",
+      attribute = flake_ref,
+      full_ref = "nixpkgs#" .. flake_ref
+    }
+  end
+  
   local flake_url, attribute = flake_ref:match("^(.-)#(.+)$")
 
   -- If no attribute is explicitly provided, assume 'default'
@@ -275,6 +234,10 @@ function M.parse_flake_reference(flake_ref)
   -- Convert custom git prefixes to standard nix flake URLs
   flake_url = M.convert_custom_git_prefix(flake_url)
 
+  -- Parse GitHub/GitLab shortcuts with branch/tag/ref support
+  -- Handle formats like: github:owner/repo/branch, github:owner/repo?ref=v1.0.0, etc.
+  flake_url = M.parse_git_ref_syntax(flake_url)
+
   -- Normalize GitHub shorthand (owner/repo -> github:owner/repo)
   -- But exclude local paths that start with ./ or ../
   if flake_url:match("^[%w%-_%.]+/[%w%-_%.]+$") and not flake_url:match("^%.") then
@@ -286,6 +249,38 @@ function M.parse_flake_reference(flake_ref)
     attribute = attribute,
     full_ref = flake_url .. "#" .. attribute
   }
+end
+
+-- Parse Git hosting shortcuts with enhanced ref support
+function M.parse_git_ref_syntax(flake_url)
+  if not flake_url or type(flake_url) ~= "string" then return flake_url end
+  
+  -- Handle github:owner/repo/branch syntax
+  local github_match = flake_url:match("^github:([%w%-_%.]+/[%w%-_%.]+)/([%w%-_%.]+)$")
+  if github_match then
+    local repo, branch = github_match:match("^(.+)/([^/]+)$")
+    if repo and branch then
+      return "github:" .. repo .. "/" .. branch
+    end
+  end
+  
+  -- Handle complex query parameters: ?ref=X&dir=Y, ?rev=X&dir=Y, etc.
+  -- This preserves all Git ref parameters that Nix supports
+  if flake_url:match("%?") then
+    -- Just return as-is - Nix will handle complex query parameters
+    return flake_url
+  end
+  
+  -- Handle gitlab:group/project/branch syntax  
+  local gitlab_match = flake_url:match("^gitlab:([%w%-_%.]+/[%w%-_%.]+)/([%w%-_%.]+)$")
+  if gitlab_match then
+    local repo, branch = gitlab_match:match("^(.+)/([^/]+)$")
+    if repo and branch then
+      return "gitlab:" .. repo .. "/" .. branch
+    end
+  end
+  
+  return flake_url
 end
 
 -- Get available versions for a flake (mock implementation for now)

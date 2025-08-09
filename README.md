@@ -4,14 +4,14 @@
 
 ## Why use this plugin?
 
-- 🚀 Access to 100,000+ packages.
-- ⚡ Enjoy all the power of Nix without the complexity. Mise handles the heavy lifting while you focus on development.
-- 🔧 Seamlessly integrates with your existing Mise workflow. Mix and match Nix packages with other Mise backends.
+- 🚀 Access to over 100,000 packages
+- ⚡ Better Nix developer experience
+- 📦 Install VSCode extensions
 
 ## Prerequisites
 
 * **[Mise](https://github.com/jdx/mise)** v2025.7.8+
-* **[Nix](https://nixos.org/)** with experimental features enabled
+* **[Nix](https://nixos.org/)**
 
 ## Installation
 
@@ -22,96 +22,134 @@ mise plugin install nix https://github.com/jbadeau/mise-nix.git
 ## Quick Start
 
 ```sh
-# NixHub packages (recommended)
-mise install nix:helmfile@1.1.2
-mise exec nix:helmfile@1.1.2 -- helmfile version
+# List available versions
+mise ls-remote nix:hello
 
-# Flake references  
-mise install nix:hello@nixos/nixpkgs#hello
-mise exec nix:hello@nixos/nixpkgs#hello -- hello
-
-# List versions
-mise ls-remote nix:helmfile
+# Install version
+mise install nix:hello@2.12.1
 ```
 
-## Usage Patterns
+## Complete Usage Guide
 
-### 1. NixHub Packages (Recommended)
+### Standard Nixpkgs Packages (Recommended - Fast & Cached)
 
-Curated packages with version history:
+Uses nixhub.io for pre-built, cached packages:
 
 ```sh
-mise install nix:helmfile@1.1.2     # Specific version
-mise install nix:helmfile@stable    # Latest stable
-mise install nix:helmfile           # Latest
+# Latest version
+mise install nix:hello
+
+# Specific version
+mise install nix:hello@2.12.1
+
+# Version aliases
+mise install nix:hello@stable
 ```
 
-### 2. Flake References (Experimental)
+### GitHub Sources
 
-Direct access to Nix flakes:
+Uses GitHub shorthand for fast access:
 
 ```sh
-# GitHub shorthand
-mise install nix:hello@nixos/nixpkgs#hello
+# From nixpkgs GitHub repository (default branch)
+mise install "nix:hello@github+nixos/nixpkgs"
 
-# Community overlays
-mise install nix:emacs@nix-community/emacs-overlay#emacs-git
+# From specific branch
+mise install "nix:hello@github+nixos/nixpkgs/nixos-unstable"
+
+# From specific release/tag
+mise install "nix:hello@github+nixos/nixpkgs?ref=23.11"
+
+# From specific commit SHA
+mise install "nix:hello@github+nixos/nixpkgs/abc123def456"
+
+# With revision parameter
+mise install "nix:hello@github+nixos/nixpkgs?rev=abc123def456"
+
+# With subdirectory (flake in subdirectory)
+mise install "nix:mytool@github+company/monorepo/main?dir=packages/tool"
+
+# GitHub shorthand syntax (alternative)
+mise install "nix:hello@nixos/nixpkgs#hello"
 ```
 
-### 3. Private Repositories (Experimental)
+### GitLab Sources
 
-Custom prefixes for private repos:
+Uses GitLab shorthand:
 
 ```sh
-# GitHub/GitLab shorthand
-mise install "nix:tool@gh-company/repo#tool"
-mise install "nix:tool@gl-group/project#tool"
-
-# Full URLs
-mise install "nix:tool@ssh-git@gitlab.company.com/repo.git#tool"
-mise install "nix:tool@https-user:token@github.com/repo.git#tool"
+# From GitLab repository
+mise install "nix:mytool@gitlab+group/project"
 ```
 
-### 4. Local Flakes (Experimental)
+### Raw Git Sources
+
+Uses full Git URLs for maximum compatibility:
+
+```sh
+# From raw git URL
+mise install "nix:hello@git+https://github.com/nixos/nixpkgs.git"
+```
+
+### Local Flakes (Experimental)
+
+⚠️ **Experimental Feature**: Local flake support is experimental and subject to change.
+
+For development with local Nix flakes:
 
 ```sh
 export MISE_NIX_ALLOW_LOCAL_FLAKES=true
-mise install "nix:package@./my-flake#package"
+
+# Local development
+mise install "nix:mytool@./my-project"
 ```
 
-## Nix Configuration
+### VSCode Extensions (Experimental)
 
-Add to `~/.config/nix/nix.conf`:
+Install VSCode extensions using vscode+install syntax:
 
-```ini
-experimental-features = nix-command flakes
-substituters = https://cache.nixos.org https://nix-community.cachix.org
-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:0VI8sF6Vsp2Jxw8+OFeVfYVdIY7X+GTtY+lR78QAbXs=
+```sh
+mise install "nix:vscode+install=vscode-extensions.golang.go"
 ```
-
-## Custom Git Prefixes
-
-| Prefix | Converts To | Use Case |
-|--------|-------------|----------|
-| `gh-user/repo` | `github:user/repo` | Private GitHub repos |
-| `gl-group/project` | `gitlab:group/project` | Private GitLab repos |
-| `ssh-git@host/repo.git` | `git+ssh://git@host/repo.git` | SSH access |
-| `https-user:token@host/repo.git` | `git+https://user:token@host/repo.git` | HTTPS auth |
 
 ## Known Limitations
 
-Due to mise's argument parsing:
+Due to mise's argument parsing limitations, some Git URL formats require workarounds:
+
+### Git Hosting Shorthand Limitations
 
 ```sh
-# ❌ Not supported
+# ❌ Not supported (direct prefixes with colons)
 mise install nix:hello@github:nixos/nixpkgs#hello
+mise install nix:mytool@gitlab:group/project#default
+mise install nix:mytool@sourcehut:owner/repo#default
 
-# ✅ Use instead
-mise install nix:hello@nixos/nixpkgs#hello
-mise install "nix:hello@gh-nixos/nixpkgs#hello"
+# ✅ Use these workarounds instead
+mise install "nix:hello@github+nixos/nixpkgs"
+mise install "nix:mytool@gitlab+group/project"
+mise install "nix:mytool@sourcehut+owner/repo"
 ```
 
-## Environment Variables
+### Git URL Workarounds
+
+Mise rejects `git+ssh://` and `git+https://` as invalid prefixes, so use these alternatives:
+
+| Prefix | Converts To | Use Case |
+|--------|-------------|----------|
+| `ssh+git@host/repo.git` | `git+ssh://git@host/repo.git` | SSH access |
+| `https+user:token@host/repo.git` | `git+https://user:token@host/repo.git` | HTTPS auth |
+
+```sh
+# ❌ These don't work due to mise parsing
+mise install "nix:hello@git+ssh://git@github.com/nixos/nixpkgs.git"
+mise install "nix:hello@git+https://user:token@github.com/nixos/nixpkgs.git"
+
+# ✅ Use these workarounds instead
+mise install "nix:hello@ssh+git@github.com/nixos/nixpkgs.git"
+mise install "nix:hello@https+user:token@github.com/nixos/nixpkgs.git"
+```
+
+## Settings
 
 ```sh
 # Custom NixHub instance
@@ -128,23 +166,23 @@ export MISE_NIX_GITHUB_ENTERPRISE_URL="github.company.com"
 export MISE_NIX_GITLAB_ENTERPRISE_URL="gitlab.company.com"
 ```
 
-## Performance Notes
+## Nix Configuration
 
-**⚠️ Warning**: Avoid full git URLs for large repos like nixpkgs (>1GB). Use GitHub shorthand instead:
+**Important:** Add to `~/.config/nix/nix.conf` for optimal performance:
 
-```sh
-# ❌ Slow (clones entire repo)
-mise install "nix:hello@https-github.com/nixos/nixpkgs.git#hello"
-
-# ✅ Fast (optimized fetching)
-mise install nix:hello@nixos/nixpkgs#hello
+```ini
+experimental-features = nix-command flakes
+substituters = https://cache.nixos.org https://nix-community.cachix.org
+trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:0VI8sF6Vsp2Jxw8+OFeVfYVdIY7X+GTtY+lR78QAbXs=
 ```
+
+Without this configuration, package installations will be significantly slower as Nix will build from source instead of using pre-built binaries.
 
 ## Troubleshooting
 
 **"Tool not found"**: Check package exists on [NixHub](https://www.nixhub.io)
 
-**"Invalid prefix"**: Use custom prefixes like `gh-` instead of `github:`
+**"Invalid prefix"**: Use `github+` syntax instead of direct `github:`
 
 **"Local flakes disabled"**: Set `MISE_NIX_ALLOW_LOCAL_FLAKES=true`
 
@@ -152,12 +190,15 @@ mise install nix:hello@nixos/nixpkgs#hello
 
 **Slow installs**: Avoid full git URLs for large repositories
 
+**VSCode extensions not showing**: Restart VSCode after installing extensions
+
 ## Development
 
 ```sh
-# Run tests
-mise test     # Unit tests
-mise e2e      # Integration tests
-```
+# Setup
+mise init # Install and link
 
-The test suite covers NixHub packages, flake references, custom prefixes, and security features.
+# Tests
+mise test # Unit tests
+mise e2e  # Integration tests
+```
