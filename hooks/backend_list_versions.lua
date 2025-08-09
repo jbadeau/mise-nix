@@ -6,6 +6,7 @@ function PLUGIN:BackendListVersions(ctx)
     error("Tool name cannot be empty")
   end
 
+
   -- If this is a flake reference, we return available versions for that flake
   if helper.is_flake_reference(tool) then
     local versions = helper.get_flake_versions(tool)

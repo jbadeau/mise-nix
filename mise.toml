@@ -3,8 +3,8 @@ LUA_PATH="lib/?.lua;;"
 
 [tools]
 lua = "5.4.8"
-"nix:helmfile" = "1.1.2"
 node = "24.5.0"
+"nix:shellspec" = "latest"
 
 [tasks.init]
 description = "init"
@@ -19,4 +19,4 @@ run = "busted -p %.spec%.lua lib"
 
 [tasks.e2e]
 description = "e2e"
-run = "bats test/e2e.bats"
+run = "shellspec"
