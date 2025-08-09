@@ -131,6 +131,112 @@ check_directory_structure() {
     [ -z "$output" ]
 }
 
+# ===== Git Source Tests (github+ syntax) =====
+
+@test "install hello from nixpkgs via github+ shorthand" {
+    run mise install "nix:hello@github+nixos/nixpkgs"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Building flake" ]]
+    
+    run mise exec "nix:hello@github+nixos/nixpkgs" -- hello
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Hello, world!" ]]
+    
+    run mise uninstall "nix:hello@github+nixos/nixpkgs"
+    [ "$status" -eq 0 ]
+}
+
+@test "install hello from nixpkgs branch via github+" {
+    run mise install "nix:hello@github+nixos/nixpkgs/nixos-unstable"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Building flake" ]]
+    
+    run mise exec "nix:hello@github+nixos/nixpkgs/nixos-unstable" -- hello
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Hello, world!" ]]
+    
+    run mise uninstall "nix:hello@github+nixos/nixpkgs/nixos-unstable"
+    [ "$status" -eq 0 ]
+}
+
+@test "install hello from nixpkgs tag via github+" {
+    run mise install "nix:hello@github+nixos/nixpkgs?ref=23.11"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Building flake" ]]
+    
+    run mise exec "nix:hello@github+nixos/nixpkgs?ref=23.11" -- hello
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Hello, world!" ]]
+    
+    run mise uninstall "nix:hello@github+nixos/nixpkgs?ref=23.11"
+    [ "$status" -eq 0 ]
+}
+
+# ===== VSCode Extension Tests =====
+
+@test "install VSCode extension via vscode+install= syntax" {
+    # Test that vscode+install=vscode-extensions syntax is recognized and processed
+    run mise ls-remote "nix:vscode+install=vscode-extensions.golang.go"
+    [ "$status" -eq 0 ]
+    # Should not error on parsing
+}
+
+@test "install VSCode extension via direct vscode-extensions syntax" {
+    # Test that direct vscode-extensions syntax works
+    run mise ls-remote "nix:vscode-extensions.golang.go"
+    [ "$status" -eq 0 ]
+    # Should not error on parsing
+}
+
+# ===== Standard Version Tests =====
+
+@test "install hello with specific version number" {
+    # Test standard version syntax
+    run mise install nix:hello@2.12.1
+    [ "$status" -eq 0 ]
+    
+    run mise exec nix:hello@2.12.1 -- hello
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Hello, world!" ]]
+    
+    check_directory_structure "nix:hello@2.12.1" "2.12.1"
+    
+    run mise uninstall nix:hello@2.12.1
+    [ "$status" -eq 0 ]
+}
+
+@test "install nodejs with specific version" {
+    # Test with different package and version
+    run mise install nix:nodejs@18.19.0
+    [ "$status" -eq 0 ]
+    
+    run mise exec nix:nodejs@18.19.0 -- node --version
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "v18" ]]
+    
+    run mise uninstall nix:nodejs@18.19.0
+    [ "$status" -eq 0 ]
+}
+
+# ===== Git URL Tests =====
+
+@test "git+https URL syntax should work" {
+    # Test full git+https URL
+    run mise ls-remote "nix:hello@git+https://github.com/nixos/nixpkgs.git"
+    [ "$status" -eq 0 ]
+    # Should not error on parsing
+}
+
+@test "ssh+ URL syntax should work" {
+    # Test ssh+ syntax
+    run mise ls-remote "nix:hello@ssh+git@github.com/nixos/nixpkgs.git"
+    [ "$status" -eq 0 ]
+    # Should not error on parsing
+}
+
+
+# ===== Security and Local Flake Tests =====
+
 @test "security: local flakes blocked when disabled" {
     if [[ "${MISE_NIX_ALLOW_LOCAL_FLAKES}" == "true" ]]; then
         skip "Local flakes are enabled, skipping security test"
@@ -140,43 +246,6 @@ check_directory_structure() {
     [ "$status" -ne 0 ]
     # The current implementation shows a different error message
     [[ "$output" =~ "Tool not found or missing releases" ]]
-}
-
-@test "custom git prefix: gh- GitHub shorthand" {
-    run mise install "nix:hello@gh-nixos/nixpkgs#hello"
-    [ "$status" -eq 0 ]
-    
-    run mise exec "nix:hello@gh-nixos/nixpkgs#hello" -- hello
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ "Hello, world!" ]]
-    
-    check_directory_structure "nix:hello@gh-nixos/nixpkgs#hello" "gh-nixos-nixpkgs#hello"
-    
-    run mise uninstall "nix:hello@gh-nixos/nixpkgs#hello"
-    [ "$status" -eq 0 ]
-}
-
-@test "custom git prefix: gl- GitLab shorthand" {
-    # Note: This tests the parsing/conversion but may fail on actual build if GitLab repo doesn't exist
-    run mise ls-remote "nix:hello@gl-group/project#package"
-    [ "$status" -eq 0 ]
-    # Should not error on parsing, even if repo doesn't exist
-}
-
-@test "custom git prefix: ssh- URL should work" {
-    # Test that ssh- prefix is recognized as a flake reference
-    # This won't actually install (since we don't have SSH access to test repos)
-    # but should at least parse correctly and not be rejected by mise
-    run mise ls-remote "nix:hello@ssh-git@github.com/nixos/nixpkgs.git#hello"
-    [ "$status" -eq 0 ]
-    # The command should succeed (empty output for flake ls-remote is normal)
-}
-
-@test "custom git prefix: https- URL should work" {
-    # Test that https- prefix is recognized as a flake reference  
-    run mise ls-remote "nix:hello@https-github.com/nixos/nixpkgs.git#hello"
-    [ "$status" -eq 0 ]
-    # The command should succeed (empty output for flake ls-remote is normal)
 }
 
 @test "security: local flakes allowed when enabled" {
