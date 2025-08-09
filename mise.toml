@@ -3,7 +3,7 @@ LUA_PATH="lib/?.lua;;"
 
 [tools]
 lua = "5.4.8"
-"nix:vscode+install=vscode-extensions.golang.go" = "latest"
+"nix:shellspec" = "latest"
 node = "24.5.0"
 
 [tasks.init]
@@ -19,4 +19,4 @@ run = "busted -p %.spec%.lua lib"
 
 [tasks.e2e]
 description = "e2e"
-run = "bats test/e2e.bats"
+run = "shellspec"

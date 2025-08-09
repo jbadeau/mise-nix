@@ -168,13 +168,15 @@ export MISE_NIX_GITLAB_ENTERPRISE_URL="gitlab.company.com"
 
 ## Nix Configuration
 
-Add to `~/.config/nix/nix.conf`:
+**Important:** Add to `~/.config/nix/nix.conf` for optimal performance:
 
 ```ini
 experimental-features = nix-command flakes
 substituters = https://cache.nixos.org https://nix-community.cachix.org
 trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:0VI8sF6Vsp2Jxw8+OFeVfYVdIY7X+GTtY+lR78QAbXs=
 ```
+
+Without this configuration, package installations will be significantly slower as Nix will build from source instead of using pre-built binaries.
 
 ## Troubleshooting
 
