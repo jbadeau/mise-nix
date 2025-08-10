@@ -21,7 +21,7 @@
         "command": "busted -p %.spec%.lua lib"
       },
       "e2e": {
-        "command": "bats test/e2e.bats"
+        "command": "shellspec"
       },
       "nx-release-publish": {
         "command": "echo noop"

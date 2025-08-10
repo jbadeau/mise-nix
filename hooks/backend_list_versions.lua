@@ -18,6 +18,8 @@ function PLUGIN:BackendListVersions(ctx)
   local current_arch = RUNTIME.archType:lower()
 
   local success, data, response = helper.fetch_tool_metadata_cached(tool, 3600)
+  
+  -- Validate tool metadata and throw error if not found
   helper.validate_tool_metadata(success, data, tool, response)
 
   local versions = {}
@@ -29,8 +31,9 @@ function PLUGIN:BackendListVersions(ctx)
     end
   end
 
+  -- For ls-remote, return empty list if no compatible versions found
   if #versions == 0 then
-    error("No compatible versions found for " .. tool .. " on " .. current_os .. " (" .. current_arch .. ")")
+    return { versions = {} }
   end
 
   table.sort(versions, helper.semver_less_than)
