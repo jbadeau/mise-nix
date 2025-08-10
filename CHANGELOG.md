@@ -1,3 +1,15 @@
+## 0.11.0 (2025-08-10)
+
+### 🚀 Features
+
+- make nixpkgs repository URL configurable via environment variable ([17fcb0f](https://github.com/jbadeau/mise-nix/commit/17fcb0f))
+- Add vscode extension install support ([9019950](https://github.com/jbadeau/mise-nix/commit/9019950))
+- Don't throw error on ls.remote if no compatible version(s) found ([92a04b9](https://github.com/jbadeau/mise-nix/commit/92a04b9))
+
+### ❤️ Thank You
+
+- jbadeau
+
 ## 0.10.0 (2025-08-03)
 
 ### 🚀 Features
