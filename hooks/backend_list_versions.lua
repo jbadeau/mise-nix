@@ -1,33 +1,35 @@
 function PLUGIN:BackendListVersions(ctx)
-  local helper = require("helper")
+  local flake = require("flake")
+  local platform = require("platform")
+  local nixhub = require("nixhub")
+  local version = require("version")
   local tool = ctx.tool
 
   if not tool or tool == "" then
     error("Tool name cannot be empty")
   end
 
-
   -- If this is a flake reference, we return available versions for that flake
-  if helper.is_flake_reference(tool) then
-    local versions = helper.get_flake_versions(tool)
+  if flake.is_reference(tool) then
+    local versions = flake.get_versions(tool)
     return { versions = versions }
   end
 
   -- Use traditional nixhub.io workflow for regular package names
-  local current_os = helper.normalize_os(RUNTIME.osType)
+  local current_os = platform.normalize_os(RUNTIME.osType)
   local current_arch = RUNTIME.archType:lower()
 
-  local success, data, response = helper.fetch_tool_metadata_cached(tool, 3600)
+  local success, data, response = nixhub.fetch_metadata_cached(tool, 3600)
   
   -- Validate tool metadata and throw error if not found
-  helper.validate_tool_metadata(success, data, tool, response)
+  nixhub.validate_metadata(success, data, tool, response)
 
   local versions = {}
   for _, release in ipairs(data.releases) do
-    local version = release.version
-    if helper.is_valid_version(version)
-        and helper.is_compatible(release.platforms_summary, current_os, current_arch) then
-      table.insert(versions, version)
+    local release_version = release.version
+    if version.is_valid(release_version)
+        and version.is_compatible(release.platforms_summary, current_os, current_arch) then
+      table.insert(versions, release_version)
     end
   end
 
@@ -36,7 +38,7 @@ function PLUGIN:BackendListVersions(ctx)
     return { versions = {} }
   end
 
-  table.sort(versions, helper.semver_less_than)
+  table.sort(versions, version.semver_less_than)
 
   return { versions = versions }
 end

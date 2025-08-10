@@ -106,11 +106,13 @@ mise install "nix:mytool@./my-project"
 
 ### VSCode Extensions (Experimental)
 
-Install VSCode extensions using vscode+install syntax:
+Install VSCode extensions using vscode+install syntax. Extensions are installed by creating a VSIX package from the Nix store and installing it in VSCode:
 
 ```sh
 mise install "nix:vscode+install=vscode-extensions.golang.go"
 ```
+
+The extension files are symlinked for access, and a VSIX package is created and installed in VSCode for IDE integration.
 
 ## Known Limitations
 
