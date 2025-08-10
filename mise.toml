@@ -5,6 +5,7 @@ LUA_PATH="lib/?.lua;;"
 lua = "5.4.8"
 node = "24.5.0"
 "nix:shellspec" = "latest"
+"nix:helmfile" = "latest"
 
 [tasks.init]
 description = "init"

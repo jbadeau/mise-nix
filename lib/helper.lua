@@ -410,7 +410,22 @@ end
 
 function M.validate_tool_metadata(success, data, tool, response)
   if not success or not data or not data.releases then
-    error("Tool not found or missing releases: " .. tool .. "\nResponse:\n" .. (response or ""))
+    -- Create a more user-friendly error message
+    local error_msg = "Package not found: " .. tool .. ". Search for available packages at https://www.nixhub.io/" .. tool
+    
+    -- Only include response details if they're meaningful
+    if response and response:match("^{") then
+      -- It's JSON, try to extract just the message
+      local message = response:match('"message":"([^"]+)"')
+      if message and message ~= "Unexpected Server Error" then
+        error_msg = "Package not found: " .. tool .. " (" .. message .. "). Search for available packages at https://www.nixhub.io/" .. tool
+      end
+    elseif response and #response > 0 and #response < 200 then
+      -- Short, potentially useful response
+      error_msg = "Package not found: " .. tool .. " (" .. response .. "). Search for available packages at https://www.nixhub.io/" .. tool
+    end
+    
+    error(error_msg)
   end
 end
 
