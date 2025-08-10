@@ -44,11 +44,6 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
 
-      - name: Install BATS
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
-      
       # Run mise tests
       - name: Run mise init
         run: mise init
@@ -89,11 +84,6 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
             accept-flake-config = true
-
-      - name: Install BATS
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
 
       # Run mise tests
       - name: Run mise init

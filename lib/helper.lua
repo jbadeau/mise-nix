@@ -127,9 +127,6 @@ end
 function M.convert_custom_git_prefix(version)
   if not version or type(version) ~= "string" then return version end
   
-  -- New syntax with + separator: ssh+host/repo.git -> git+ssh://host/repo.git
-  -- This avoids conflicts with # used for flake attributes
-  
   -- SSH URLs: ssh+... -> git+ssh://...
   if version:match("^ssh%+") then
     local path = version:gsub("^ssh%+", "")
@@ -159,10 +156,25 @@ function M.convert_custom_git_prefix(version)
     return "gitlab:" .. path
   end
   
-  -- SourceHut shorthand: sourcehut+owner/repo -> sourcehut:owner/repo
-  if version:match("^sourcehut%+[%w%-_%.]+/[%w%-_%.]+") then
-    local path = version:gsub("^sourcehut%+", "")
-    return "sourcehut:" .. path
+  
+  -- GitHub Enterprise: ghe+user/repo -> git+https://github.company.com/user/repo
+  -- Only transform if environment variable is set
+  if version:match("^ghe%+[%w%-_%.]+/[%w%-_%.]+") then
+    local github_enterprise_url = os.getenv("MISE_NIX_GITHUB_ENTERPRISE_URL")
+    if github_enterprise_url then
+      local path = version:gsub("^ghe%+", "")
+      return "git+https://" .. github_enterprise_url:gsub("https://", "") .. "/" .. path
+    end
+  end
+  
+  -- GitLab Enterprise: gli+group/project -> git+https://gitlab.company.com/group/project
+  -- Only transform if environment variable is set
+  if version:match("^gli%+[%w%-_%.]+/[%w%-_%.]+") then
+    local gitlab_enterprise_url = os.getenv("MISE_NIX_GITLAB_ENTERPRISE_URL")
+    if gitlab_enterprise_url then
+      local path = version:gsub("^gli%+", "")
+      return "git+https://" .. gitlab_enterprise_url:gsub("https://", "") .. "/" .. path
+    end
   end
   
   return version
@@ -174,14 +186,31 @@ function M.is_flake_reference(tool)
 
   -- Check for flake reference patterns (including custom prefixes)
   local patterns = {
+    -- Standard Nix flake patterns
+    "^github:",           -- github:owner/repo#package (standard Nix GitHub flake)
+    "^gitlab:",           -- gitlab:group/project#package (standard Nix GitLab flake)
+    "^git%+https://",     -- git+https://...#package (standard Nix git flake)
+    "^git%+ssh://",       -- git+ssh://...#package (standard Nix git flake)
+    "^path:",             -- path:/some/path#package (path URI)
+    "^file:",             -- file:/some/path#package (file URI)
+    "nixpkgs#",           -- nixpkgs#hello (nixpkgs shorthand)
+    
+    -- Local path patterns (must contain # to be flake reference)
+    "^%./.*#",            -- ./my-flake#package (relative path)
+    "^%../.*#",           -- ../my-flake#package (relative path)
+    "^/.*#",              -- /absolute/path/flake#tool (absolute path with # for flake)
+    
+    -- Owner/repo shorthand (e.g., nixos/nixpkgs#hello)
+    "^[%w%-_%.]+/[%w%-_%.]+#", -- owner/repo#package shorthand
+    
+    -- Custom patterns with plus separator
     "^github%+",          -- github+owner/repo#package (GitHub shorthand)
     "^gitlab%+",          -- gitlab+group/project#package (GitLab shorthand)  
-    "^sourcehut%+",       -- sourcehut+owner/repo#package (SourceHut shorthand)
     "^vscode%+install=vscode%-extensions%.", -- vscode+install=vscode-extensions.publisher.extension (VSCode extension install)
-    "^git%+https://",     -- git+https://...#package (for tool@source only)
-    "^git%+ssh://",       -- git+ssh://...#package (for tool@source only)
     "^ssh%+",             -- ssh+host/repo.git#package (for tool@source only)
     "^https%+",           -- https+host/repo.git#package (for tool@source only)
+    "^ghe%+",             -- ghe+user/repo#package (GitHub Enterprise)
+    "^gli%+",             -- gli+group/project#package (GitLab Enterprise)
     "^vscode%-extensions%.", -- vscode-extensions.publisher.extension (normal package)
   }
 
@@ -410,7 +439,22 @@ end
 
 function M.validate_tool_metadata(success, data, tool, response)
   if not success or not data or not data.releases then
-    error("Tool not found or missing releases: " .. tool .. "\nResponse:\n" .. (response or ""))
+    -- Create a more user-friendly error message
+    local error_msg = "Package not found: " .. tool .. ". Search for available packages at https://www.nixhub.io/" .. tool
+    
+    -- Only include response details if they're meaningful
+    if response and response:match("^{") then
+      -- It's JSON, try to extract just the message
+      local message = response:match('"message":"([^"]+)"')
+      if message and message ~= "Unexpected Server Error" then
+        error_msg = "Package not found: " .. tool .. " (" .. message .. "). Search for available packages at https://www.nixhub.io/" .. tool
+      end
+    elseif response and #response > 0 and #response < 200 then
+      -- Short, potentially useful response
+      error_msg = "Package not found: " .. tool .. " (" .. response .. "). Search for available packages at https://www.nixhub.io/" .. tool
+    end
+    
+    error(error_msg)
   end
 end
 

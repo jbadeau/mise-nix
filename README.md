@@ -122,12 +122,10 @@ Due to mise's argument parsing limitations, some Git URL formats require workaro
 # ❌ Not supported (direct prefixes with colons)
 mise install nix:hello@github:nixos/nixpkgs#hello
 mise install nix:mytool@gitlab:group/project#default
-mise install nix:mytool@sourcehut:owner/repo#default
 
 # ✅ Use these workarounds instead
 mise install "nix:hello@github+nixos/nixpkgs"
 mise install "nix:mytool@gitlab+group/project"
-mise install "nix:mytool@sourcehut+owner/repo"
 ```
 
 ### Git URL Workarounds
@@ -180,7 +178,7 @@ Without this configuration, package installations will be significantly slower a
 
 ## Troubleshooting
 
-**"Tool not found"**: Check package exists on [NixHub](https://www.nixhub.io)
+**"Package not found"**: Check package exists on [NixHub](https://www.nixhub.io)
 
 **"Invalid prefix"**: Use `github+` syntax instead of direct `github:`
 

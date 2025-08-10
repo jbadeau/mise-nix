@@ -120,7 +120,7 @@ Describe "mise-nix plugin"
       
       When call mise install "nix:mytool@./my-project"
       The status should be failure
-      The error should include "Tool not found or missing releases"
+      The error should include "Package not found: mytool"
     End
 
     It "allows local flakes when enabled"
