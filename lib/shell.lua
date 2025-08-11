@@ -12,8 +12,9 @@ end
 -- Try to execute shell command, return success status and result
 function M.try_exec(fmt, ...)
   local args = {...}
+  local unpack = table.unpack or unpack  -- Compatibility with Lua 5.1/5.2
   local ok, result = pcall(function() 
-    return M.exec(fmt, table.unpack(args))
+    return M.exec(fmt, unpack(args))
   end)
   return ok, result
 end
