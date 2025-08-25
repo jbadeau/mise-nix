@@ -10,5 +10,10 @@ function M.pack(msg)  print("📦 " .. msg) end
 function M.find(msg)  print("🔍 " .. msg) end
 function M.tool(msg)  print("🔧 " .. msg) end
 function M.hint(msg)  print("💡 " .. msg) end
+function M.debug(msg)  
+  if os.getenv("MISE_DEBUG") or os.getenv("MISE_VERBOSE") then
+    print("🐛 " .. msg) 
+  end
+end
 
 return M

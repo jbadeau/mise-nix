@@ -99,7 +99,7 @@ end
 
 -- Get and filter compatible versions for current platform
 function M.get_compatible_versions(tool, current_os, current_arch)
-  local success, data, response = nixhub.fetch_metadata_cached(tool, 3600)
+  local success, data, response = nixhub.fetch_metadata(tool)
   nixhub.validate_metadata(success, data, tool, response)
 
   local compatible = M.filter_compatible_versions(data.releases, current_os, current_arch)
