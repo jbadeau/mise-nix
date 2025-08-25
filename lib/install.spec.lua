@@ -4,12 +4,42 @@ _G.RUNTIME = {
   archType = "amd64"
 }
 
+package.loaded["http"] = {
+  get = function(opts)
+    return {
+      status_code = 200,
+      body = '{"releases": [{"version": "1.0.0"}]}'
+    }, nil
+  end
+}
+
+package.loaded["json"] = {
+  decode = function(str)
+    return {releases = {{version = "1.0.0"}}}
+  end
+}
+
+package.loaded["cmd"] = {
+  exec = function(command)
+    return "mocked output"
+  end
+}
+
+package.loaded["file"] = {
+  join_path = function(...)
+    local args = {...}
+    return table.concat(args, "/")
+  end,
+  symlink = function(src, dst) end,
+  exists = function(path) return true end
+}
+
 package.loaded["platform"] = {
   normalize_os = function(os) return os:lower() end,
   verify_build = function(path, tool) end
 }
 
-package.loaded["build"] = {
+package.loaded["vsix"] = {
   from_nixhub = function(tool, version, os, arch)
     return {
       tool = tool,
@@ -34,13 +64,16 @@ package.loaded["vscode"] = {
 }
 
 package.loaded["shell"] = {
-  symlink_force = function(src, dst) end
+  symlink_force = function(src, dst) end,
+  is_containerized = function() return false end,
+  try_exec = function(cmd, ...) return false, "" end
 }
 
 package.loaded["logger"] = {
   tool = function(msg) end,
   done = function(msg) end,
-  find = function(msg) end
+  find = function(msg) end,
+  debug = function(msg) end
 }
 
 local install = require("install")

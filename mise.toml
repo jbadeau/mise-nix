@@ -1,5 +1,6 @@
 [env]
 LUA_PATH="lib/?.lua;;"
+NX_NO_CLOUD="true"
 
 [tools]
 lua = "5.4.8"
@@ -20,3 +21,12 @@ run = "busted -p %.spec%.lua lib"
 [tasks.e2e]
 description = "e2e"
 run = "shellspec"
+
+[tasks.nuke]
+description = "nuke"
+run = [
+    "mise uninstall --all nix:*",
+    "rm -rf ~/.cache/mise/nix-builds/* /tmp/mise-nix-cache/* 2>/dev/null",
+    "sudo nix-collect-garbage -d && sudo nix --extra-experimental-features nix-command store gc --max 0"
+]
+

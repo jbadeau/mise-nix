@@ -1,6 +1,15 @@
--- Mock cmd module for shell tests  
+-- Mock cmd module for shell tests
 package.loaded["cmd"] = {
   exec = function(command) return "mocked: " .. command end
+}
+
+package.loaded["file"] = {
+  join_path = function(...)
+    local args = {...}
+    return table.concat(args, "/")
+  end,
+  symlink = function(src, dst) end,
+  exists = function(path) return true end
 }
 
 local shell = require("shell")

@@ -1,5 +1,5 @@
 -- Nixhub.io API integration for package metadata
-local shell = require("shell")
+local http = require("http")
 local json = require("json")
 
 local M = {}
@@ -9,50 +9,32 @@ function M.get_base_url()
   return os.getenv("MISE_NIX_NIXHUB_BASE_URL") or "https://www.nixhub.io"
 end
 
--- Get cache directory path for a tool
-function M.get_cache_path(tool)
-  local cache_dir = os.getenv("HOME") .. "/.cache/mise-nix"
-  shell.exec("mkdir -p " .. cache_dir)
-  return cache_dir .. "/" .. tool .. ".json"
-end
-
 -- Fetch tool metadata from nixhub.io
 function M.fetch_metadata(tool)
   local url = M.get_base_url() .. "/packages/" .. tool .. "?_data=routes%2F_nixhub.packages.%24pkg._index"
 
-  -- Add timeout and better error handling
-  local response = shell.exec("curl -sL --max-time 10 --retry 2 \"" .. url .. "\"")
+  -- Use native HTTP module
+  local resp, err = http.get({
+    url = url,
+    headers = {
+      ['User-Agent'] = 'mise-nix'
+    }
+  })
 
-  if response:match("^curl:") or response == "" then
-    return false, nil, "Failed to fetch package metadata from nixhub.io"
+  if err ~= nil then
+    return false, nil, "HTTP request failed: " .. err
   end
 
-  local success, data = pcall(json.decode, response)
-  return success, data, response
-end
-
--- Fetch tool metadata with caching
-function M.fetch_metadata_cached(tool, max_age_seconds)
-  local cache_file = M.get_cache_path(tool)
-
-  -- Check if cache exists and is fresh
-  local stat = shell.exec("stat -c %Y " .. cache_file .. " 2>/dev/null || echo 0")
-  local cache_time = tonumber(stat) or 0
-
-  if os.time() - cache_time < (max_age_seconds or 3600) then
-    local cached = shell.exec("cat " .. cache_file .. " 2>/dev/null")
-    if cached and cached ~= "" then
-      local success, data = pcall(json.decode, cached)
-      if success then return success, data, cached end
-    end
+  if resp.status_code ~= 200 then
+    return false, nil, "HTTP error: " .. resp.status_code
   end
 
-  -- Fetch fresh data and cache it
-  local success, data, response = M.fetch_metadata(tool)
-  if success then
-    shell.exec("echo '" .. response:gsub("'", "'\"'\"'") .. "' > " .. cache_file)
+  if not resp.body or resp.body == "" then
+    return false, nil, "Empty response from nixhub.io"
   end
-  return success, data, response
+
+  local success, data = pcall(json.decode, resp.body)
+  return success, data, resp.body
 end
 
 -- Validate that metadata fetch was successful and contains expected data

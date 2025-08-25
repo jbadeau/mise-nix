@@ -19,7 +19,7 @@ function PLUGIN:BackendListVersions(ctx)
   local current_os = platform.normalize_os(RUNTIME.osType)
   local current_arch = RUNTIME.archType:lower()
 
-  local success, data, response = nixhub.fetch_metadata_cached(tool, 3600)
+  local success, data, response = nixhub.fetch_metadata(tool)
   
   -- Validate tool metadata and throw error if not found
   nixhub.validate_metadata(success, data, tool, response)

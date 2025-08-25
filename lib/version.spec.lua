@@ -1,6 +1,6 @@
 -- Mock nixhub module for version tests
 package.loaded["nixhub"] = {
-  fetch_metadata_cached = function(tool, cache_time)
+  fetch_metadata = function(tool)
     return true, {
       releases = {
         {version = "1.0.0", platforms = {{}}},
