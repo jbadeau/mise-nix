@@ -9,8 +9,12 @@ local M = {}
 
 -- Build a package from nixhub metadata
 function M.from_nixhub(tool, requested_version, current_os, current_arch)
+  local start_time = os.time()
+  logger.debug("Starting nixhub resolution for " .. tool .. "@" .. (requested_version or "latest"))
+
   -- Resolve version to actual release
   local release = version.resolve_version(tool, requested_version, current_os, current_arch)
+  logger.debug(string.format("Version resolution took %ds", os.time() - start_time))
   
   -- Get platform build info
   local platform_build = release.platforms and release.platforms[1]
@@ -23,8 +27,15 @@ function M.from_nixhub(tool, requested_version, current_os, current_arch)
   local repo_ref = repo_url:gsub("https://github.com/", "github:")
   local flake_ref = string.format("%s/%s#%s", repo_ref, platform_build.commit_hash, platform_build.attribute_path)
 
-  logger.step(string.format("Building %s@%s...", tool, release.version))
-  local build_output = shell.exec('nix build --no-link --print-out-paths "%s"', flake_ref)
+  logger.step(string.format("Installing %s@%s...", tool, release.version))
+
+  local build_cmd = string.format('nix build --no-link --print-out-paths "%s"', flake_ref)
+
+  local build_start = os.time()
+  logger.debug("Starting nix build: " .. build_cmd)
+  logger.info("Resolving package...")
+  local build_output = shell.exec(build_cmd)
+  logger.debug(string.format("Nix build took %ds", os.time() - build_start))
 
   local outputs = {}
   for path in build_output:gmatch("[^\n]+") do

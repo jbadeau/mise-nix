@@ -1,15 +1,10 @@
 -- Mock dependencies for nixhub tests
-package.loaded["shell"] = {
-  exec = function(cmd)
-    if cmd:match("curl") then
-      return '{"releases": [{"version": "1.0.0"}]}'
-    elseif cmd:match("mkdir") then
-      return ""
-    elseif cmd:match("stat") then
-      return "0"
-    else
-      return ""
-    end
+package.loaded["http"] = {
+  get = function(opts)
+    return {
+      status_code = 200,
+      body = '{"releases": [{"version": "1.0.0"}]}'
+    }, nil
   end
 }
 
@@ -19,14 +14,21 @@ package.loaded["json"] = {
   end
 }
 
+package.loaded["file"] = {
+  join_path = function(...)
+    local args = {...}
+    return table.concat(args, "/")
+  end,
+  symlink = function(src, dst) end,
+  exists = function(path) return true end
+}
+
 local nixhub = require("nixhub")
 
 describe("Nixhub module", function()
   it("should have all required functions", function()
     assert.is_function(nixhub.get_base_url)
-    assert.is_function(nixhub.get_cache_path)
     assert.is_function(nixhub.fetch_metadata)
-    assert.is_function(nixhub.fetch_metadata_cached)
     assert.is_function(nixhub.validate_metadata)
   end)
 

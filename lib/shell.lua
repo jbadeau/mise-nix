@@ -1,5 +1,6 @@
 -- Shell execution utilities with better error handling
-local cmd = require("cmd")
+local cmd = require("cmd")  -- Native mise cmd module
+local file = require("file")  -- Native mise file module
 
 local M = {}
 
@@ -19,10 +20,27 @@ function M.try_exec(fmt, ...)
   return ok, result
 end
 
--- Force create symlink by removing target first
+-- Force create symlink using native file module
 function M.symlink_force(src, dst)
-  M.exec('rm -rf "%s"', dst)
-  M.exec('ln -sfn "%s" "%s"', src, dst)
+  -- Remove target first if it exists, then create symlink
+  M.try_exec('rm -rf "%s"', dst)  -- Clean up existing file/symlink
+  file.symlink(src, dst)
+end
+
+-- Batch create multiple symlinks
+function M.symlink_batch(operations)
+  if not operations or #operations == 0 then return end
+
+  for _, op in ipairs(operations) do
+    M.symlink_force(op.src, op.dst)
+  end
+end
+
+-- Check if running in containerized environment (K8s/PVC)
+function M.is_containerized()
+  return os.getenv("KUBERNETES_SERVICE_HOST") ~= nil or 
+         os.getenv("CONTAINER") ~= nil or
+         M.try_exec("test -f /.dockerenv")
 end
 
 return M

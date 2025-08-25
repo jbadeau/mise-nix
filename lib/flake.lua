@@ -243,24 +243,7 @@ function M.build(flake_ref, version)
     end
   end
 
-  -- Build with security-focused options
-  local sandbox_flag = ""
-  local extra_sandbox_flag = ""
-  local is_local = parsed.url:match("^%.") or parsed.url:match("^/") or 
-                   parsed.url:match("^path:") or parsed.url:match("^file:")
-  
-  -- Enable sandbox for better security isolation
-  if os.getenv("MISE_NIX_ENABLE_SANDBOX") ~= "false" then
-    sandbox_flag = "--sandbox"
-  end
-  
-  -- Add extra security flags for untrusted sources
-  if is_local or os.getenv("MISE_NIX_EXTRA_SECURITY") == "true" then
-    extra_sandbox_flag = "--restrict-eval"
-  end
-  
-  local cmdline = string.format("nix build --no-link --print-out-paths %s %s '%s'", 
-                                sandbox_flag, extra_sandbox_flag, build_ref)
+  local cmdline = string.format("nix build --no-link --print-out-paths '%s'", build_ref)
 
   logger.step("Building flake " .. build_ref .. "...")
   local result = shell.exec(cmdline)

@@ -1,8 +1,23 @@
 -- Mock dependencies for VSCode tests
 package.loaded["shell"] = {
   exec = function(cmd) return "" end,
-  try_exec = function(cmd) return true, "success" end,
-  symlink_force = function(src, dst) end
+  try_exec = function(cmd)
+    -- Mock successful VSIX installation
+    if cmd:match("code.*--install%-extension") then
+      return true, "Extension 'test.test' was successfully installed."
+    end
+    -- Mock package.json existence check
+    if cmd:match("test %-f.*package%.json") then
+      return true, ""
+    end
+    -- Mock cat command for package.json
+    if cmd:match('cat.*package%.json') then
+      return true, '{"name":"test","version":"1.0.0","publisher":"test"}'
+    end
+    return true, "success"
+  end,
+  symlink_force = function(src, dst) end,
+  is_containerized = function() return false end
 }
 
 package.loaded["logger"] = {
@@ -11,7 +26,31 @@ package.loaded["logger"] = {
   done = function(msg) end,
   fail = function(msg) end,
   find = function(msg) end,
-  warn = function(msg) end
+  warn = function(msg) end,
+  debug = function(msg) end,
+  step = function(msg) end
+}
+
+package.loaded["tempdir"] = {
+  with_temp_dir = function(prefix, func)
+    -- Simulate successful VSIX creation
+    return func("/tmp/mock_temp_dir")
+  end
+}
+
+package.loaded["cmd"] = {
+  exec = function(command)
+    return "mocked output"
+  end
+}
+
+package.loaded["file"] = {
+  join_path = function(...)
+    local args = {...}
+    return table.concat(args, "/")
+  end,
+  symlink = function(src, dst) end,
+  exists = function(path) return true end
 }
 
 local vscode = require("vscode")
@@ -21,7 +60,6 @@ describe("VSCode module", function()
     assert.is_function(vscode.is_extension)
     assert.is_function(vscode.extract_extension_id)
     assert.is_function(vscode.get_extensions_dir)
-    assert.is_function(vscode.install_extension_symlink)
     assert.is_function(vscode.install_via_vsix)
     assert.is_function(vscode.create_and_install_vsix)
     assert.is_function(vscode.install_extension)
@@ -74,15 +112,11 @@ describe("VSCode module", function()
   describe("install functions", function()
     it("should not error when calling install functions", function()
       assert.has_no.errors(function()
-        vscode.install_extension_symlink("/nix/store/abc", "vscode-extensions.test.test")
-      end)
-      
-      assert.has_no.errors(function()
         vscode.install_via_vsix("/path/to/test.vsix")
       end)
-      
+
       assert.has_no.errors(function()
-        vscode.install_extension("/nix/store/abc", "/install/path", "vscode-extensions.test.test")
+        vscode.install_extension("/nix/store/abc", "vscode-extensions.test.test")
       end)
     end)
   end)
