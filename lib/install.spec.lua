@@ -34,13 +34,16 @@ package.loaded["vscode"] = {
 }
 
 package.loaded["shell"] = {
-  symlink_force = function(src, dst) end
+  symlink_force = function(src, dst) end,
+  is_containerized = function() return false end,
+  try_exec = function(cmd, ...) return false, "" end
 }
 
 package.loaded["logger"] = {
   tool = function(msg) end,
   done = function(msg) end,
-  find = function(msg) end
+  find = function(msg) end,
+  debug = function(msg) end
 }
 
 local install = require("install")

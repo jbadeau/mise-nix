@@ -7,13 +7,23 @@ local logger = require("logger")
 
 local M = {}
 
--- Standard tool installation via symlink
+-- Standard tool installation via symlink (PVC-optimized)
 function M.standard_tool(nix_store_path, install_path, label)
   logger.tool("Installing as standard tool: " .. label)
+  
+  -- In containerized environments, check if symlink already exists and is correct
+  if shell.is_containerized() then
+    local ok, current_target = shell.try_exec('readlink "%s" 2>/dev/null', install_path)
+    if ok and current_target:match(nix_store_path .. "$") then
+      logger.debug("Symlink already correct: " .. install_path)
+      return
+    end
+  end
+  
   shell.symlink_force(nix_store_path, install_path)
 end
 
--- Flake installation with hash workaround for direct references
+-- Flake installation with hash workaround for direct references (PVC-optimized)
 function M.flake_with_hash_workaround(nix_store_path, install_path)
   -- WORKAROUND: mise expects a directory named after the nix store hash for direct flake references
   local nix_hash = nix_store_path:match("/nix/store/([^/]+)")
@@ -23,6 +33,16 @@ function M.flake_with_hash_workaround(nix_store_path, install_path)
   if not install_dir then return end
   
   local hash_path = install_dir .. "/" .. nix_hash
+  
+  -- In containerized environments, check if target already points correctly to avoid unnecessary I/O
+  if shell.is_containerized() then
+    local ok, current_target = shell.try_exec('readlink "%s" 2>/dev/null', hash_path)
+    if ok and current_target:match(nix_store_path .. "$") then
+      logger.debug("Hash symlink already correct: " .. hash_path)
+      return
+    end
+  end
+  
   shell.symlink_force(nix_store_path, hash_path)
 end
 

@@ -2,7 +2,8 @@
 package.loaded["shell"] = {
   exec = function(cmd) return "" end,
   try_exec = function(cmd) return true, "success" end,
-  symlink_force = function(src, dst) end
+  symlink_force = function(src, dst) end,
+  is_containerized = function() return false end
 }
 
 package.loaded["logger"] = {
@@ -11,7 +12,14 @@ package.loaded["logger"] = {
   done = function(msg) end,
   fail = function(msg) end,
   find = function(msg) end,
-  warn = function(msg) end
+  warn = function(msg) end,
+  debug = function(msg) end
+}
+
+package.loaded["tempdir"] = {
+  with_temp_dir = function(prefix, func) 
+    return func("/tmp/test_" .. (prefix or "temp"))
+  end
 }
 
 local vscode = require("vscode")

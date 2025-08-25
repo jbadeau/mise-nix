@@ -259,8 +259,11 @@ function M.build(flake_ref, version)
     extra_sandbox_flag = "--restrict-eval"
   end
   
-  local cmdline = string.format("nix build --no-link --print-out-paths %s %s '%s'", 
-                                sandbox_flag, extra_sandbox_flag, build_ref)
+  -- Respect mise parallel job setting
+  local max_jobs = os.getenv("MISE_JOBS") or "4"
+  logger.debug("Using max-jobs=" .. max_jobs .. " for flake build")
+  local cmdline = string.format("nix build --no-link --print-out-paths --max-jobs %s %s %s '%s'", 
+                                max_jobs, sandbox_flag, extra_sandbox_flag, build_ref)
 
   logger.step("Building flake " .. build_ref .. "...")
   local result = shell.exec(cmdline)

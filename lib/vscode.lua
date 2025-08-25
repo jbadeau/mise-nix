@@ -1,6 +1,7 @@
 -- VSCode extension detection, management, and installation
 local shell = require("shell")
 local logger = require("logger")
+local tempdir = require("tempdir")
 
 local M = {}
 
@@ -21,7 +22,7 @@ function M.get_extensions_dir()
   return os.getenv("HOME") .. "/.vscode/extensions"
 end
 
--- Extension symlink installation (for file system access)
+-- Extension symlink installation (for file system access) - PVC optimized
 function M.install_extension_symlink(nix_store_path, tool_name)
   local ext_id = M.extract_extension_id(tool_name)
   if not ext_id then
@@ -30,6 +31,15 @@ function M.install_extension_symlink(nix_store_path, tool_name)
   
   local ext_dir = M.get_extensions_dir()
   local target_path = ext_dir .. "/" .. ext_id
+  
+  -- In containerized environments, check if symlink already exists and is correct
+  if shell.is_containerized() then
+    local ok, current_target = shell.try_exec('readlink "%s" 2>/dev/null', target_path)
+    if ok and current_target:match(nix_store_path .. "$") then
+      logger.debug("VSCode extension symlink already correct: " .. target_path)
+      return ext_id
+    end
+  end
   
   shell.exec('mkdir -p "%s"', ext_dir)
   shell.symlink_force(nix_store_path, target_path)
@@ -203,31 +213,41 @@ function M.create_vsix_manifest(temp_dir, ext_id, ext_path)
   shell.exec('cat > "%s/extension.vsixmanifest" << \'EOF\'\n%sEOF', temp_dir, vsix_manifest)
 end
 
--- VSIX file creation and installation
+-- VSIX file creation and installation - PVC optimized with temp directory
 function M.create_and_install_vsix(ext_id, nix_store_path, install_dir, tool_name)
   -- VSCode extensions in Nix are located at share/vscode/extensions/{ext_id}
   local ext_path = nix_store_path .. "/share/vscode/extensions/" .. ext_id
   local vsix_name = (tool_name or ext_id):gsub("%.", "-") .. ".vsix"
   local vsix_path = install_dir .. "/" .. vsix_name
   
-  -- Create VSIX file with proper structure
-  local zip_ok = pcall(function()
-    -- Create temp directory for proper VSIX structure
-    local temp_dir = install_dir .. "/vsix_temp"
-    shell.exec('mkdir -p "%s/extension"', temp_dir)
-    shell.exec('cp -r "%s"/. "%s/extension/"', ext_path, temp_dir)
-    -- Fix permissions on copied files so they can be deleted
-    shell.exec('chmod -R u+w "%s"', temp_dir)
-    
-    -- Create required VSIX manifest files
-    M.create_vsix_manifest(temp_dir, ext_id, ext_path)
-    
-    shell.exec('cd "%s" && zip -r "%s" . -x "*.DS_Store"', temp_dir, vsix_path)
-    shell.exec('rm -rf "%s"', temp_dir)
+  -- Skip VSIX creation if already exists and valid in containerized environments
+  if shell.is_containerized() then
+    local ok, _ = shell.try_exec('test -f "%s" && zip -T "%s" >/dev/null 2>&1', vsix_path, vsix_path)
+    if ok then
+      logger.debug("VSIX already exists and valid: " .. vsix_path)
+      local install_ok, install_status = M.install_via_vsix(vsix_path)
+      return install_ok, vsix_path, install_status
+    end
+  end
+  
+  -- Create VSIX file with proper structure using optimized temp directory
+  local zip_ok, zip_result = pcall(function()
+    return tempdir.with_temp_dir("mise_vsix_" .. ext_id:gsub("%.", "_"), function(temp_dir)
+      shell.exec('mkdir -p "%s/extension"', temp_dir)
+      shell.exec('cp -r "%s"/. "%s/extension/"', ext_path, temp_dir)
+      -- Fix permissions on copied files so they can be deleted
+      shell.exec('chmod -R u+w "%s"', temp_dir)
+      
+      -- Create required VSIX manifest files
+      M.create_vsix_manifest(temp_dir, ext_id, ext_path)
+      
+      shell.exec('cd "%s" && zip -r "%s" . -x "*.DS_Store"', temp_dir, vsix_path)
+      return true
+    end)
   end)
   
   if not zip_ok then
-    logger.fail("VSIX creation failed")
+    logger.fail("VSIX creation failed: " .. (zip_result or "unknown error"))
     return false, nil
   end
   

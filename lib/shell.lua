@@ -19,10 +19,30 @@ function M.try_exec(fmt, ...)
   return ok, result
 end
 
--- Force create symlink by removing target first
+-- Force create symlink by removing target first (PVC-optimized)
 function M.symlink_force(src, dst)
-  M.exec('rm -rf "%s"', dst)
-  M.exec('ln -sfn "%s" "%s"', src, dst)
+  -- Batch operations to reduce PVC I/O overhead
+  M.exec('rm -rf "%s" && ln -sfn "%s" "%s"', dst, src, dst)
+end
+
+-- Batch create multiple symlinks (for PVC performance)
+function M.symlink_batch(operations)
+  if not operations or #operations == 0 then return end
+  
+  local commands = {}
+  for _, op in ipairs(operations) do
+    table.insert(commands, string.format('rm -rf "%s" && ln -sfn "%s" "%s"', op.dst, op.src, op.dst))
+  end
+  
+  -- Execute all operations in a single shell command
+  M.exec(table.concat(commands, ' && '))
+end
+
+-- Check if running in containerized environment (K8s/PVC)
+function M.is_containerized()
+  return os.getenv("KUBERNETES_SERVICE_HOST") ~= nil or 
+         os.getenv("CONTAINER") ~= nil or
+         M.try_exec("test -f /.dockerenv")
 end
 
 return M

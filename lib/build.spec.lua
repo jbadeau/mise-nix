@@ -25,7 +25,8 @@ package.loaded["logger"] = {
   step = function(msg) end,
   pack = function(msg) end,
   warn = function(msg) end,
-  hint = function(msg) end
+  hint = function(msg) end,
+  debug = function(msg) end
 }
 
 local build = require("build")

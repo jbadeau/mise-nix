@@ -24,7 +24,11 @@ function M.from_nixhub(tool, requested_version, current_os, current_arch)
   local flake_ref = string.format("%s/%s#%s", repo_ref, platform_build.commit_hash, platform_build.attribute_path)
 
   logger.step(string.format("Building %s@%s...", tool, release.version))
-  local build_output = shell.exec('nix build --no-link --print-out-paths "%s"', flake_ref)
+  
+  -- Respect mise parallel job setting
+  local max_jobs = os.getenv("MISE_JOBS") or "4"
+  local build_cmd = string.format('nix build --no-link --print-out-paths --max-jobs %s "%s"', max_jobs, flake_ref)
+  local build_output = shell.exec(build_cmd)
 
   local outputs = {}
   for path in build_output:gmatch("[^\n]+") do
