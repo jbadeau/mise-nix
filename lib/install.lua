@@ -2,6 +2,7 @@
 local platform = require("platform")
 local vsix = require("vsix")
 local vscode = require("vscode")
+local jetbrains = require("jetbrains")
 local shell = require("shell")
 local logger = require("logger")
 
@@ -57,9 +58,11 @@ function M.from_nixhub(tool, requested_version, install_path)
   -- Verify the build succeeded
   platform.verify_build(nix_store_path, tool)
 
-  -- Handle VSCode extensions specially
+  -- Handle VSCode extensions and JetBrains plugins specially
   if vscode.is_extension(tool) then
     vscode.install_extension(nix_store_path, tool)
+  elseif jetbrains.is_plugin(tool) then
+    jetbrains.install_plugin_from_store(nix_store_path, tool)
   else
     M.standard_tool(nix_store_path, install_path, tool)
   end
@@ -69,7 +72,8 @@ function M.from_nixhub(tool, requested_version, install_path)
   return {
     version = build_result.version,
     store_path = nix_store_path,
-    is_vscode = vscode.is_extension(tool)
+    is_vscode = vscode.is_extension(tool),
+    is_jetbrains = jetbrains.is_plugin(tool)
   }
 end
 
@@ -82,10 +86,14 @@ function M.from_flake(flake_ref, version_hint, install_path)
   platform.verify_build(nix_store_path, flake_ref)
 
   local is_vscode = vscode.is_extension(flake_ref)
+  local is_jetbrains = jetbrains.is_plugin(flake_ref)
 
   if is_vscode then
     logger.find("Detected VSCode extension flake: " .. flake_ref)
     vscode.install_extension(nix_store_path, flake_ref)
+  elseif is_jetbrains then
+    logger.find("Detected JetBrains plugin flake: " .. flake_ref)
+    jetbrains.install_plugin_from_store(nix_store_path, flake_ref)
   else
     M.standard_tool(nix_store_path, install_path, flake_ref)
     M.flake_with_hash_workaround(nix_store_path, install_path)
@@ -96,7 +104,8 @@ function M.from_flake(flake_ref, version_hint, install_path)
   return {
     version = build_result.version,
     store_path = nix_store_path,
-    is_vscode = is_vscode
+    is_vscode = is_vscode,
+    is_jetbrains = is_jetbrains
   }
 end
 

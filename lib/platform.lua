@@ -3,6 +3,23 @@ local shell = require("shell")
 
 local M = {}
 
+-- Detect current operating system
+function M.detect_os()
+  if RUNTIME and RUNTIME.osType then
+    return M.normalize_os(RUNTIME.osType)
+  else
+    -- Fallback for cases where RUNTIME is not available (like testing)
+    local uname_ok, uname_result = shell.try_exec("uname -s")
+    if uname_ok and uname_result then
+      uname_result = uname_result:gsub("%s+", "")  -- trim whitespace
+      return M.normalize_os(uname_result)
+    end
+
+    -- Default fallback to Linux (Windows isn't supported by Nix)
+    return "linux"
+  end
+end
+
 -- Normalize OS names to consistent format
 function M.normalize_os(os)
   os = os:lower()
@@ -10,6 +27,50 @@ function M.normalize_os(os)
   elseif os == "linux" then return "linux"
   elseif os == "windows" then return "windows"
   else return os
+  end
+end
+
+-- Detect current architecture
+function M.detect_arch()
+  if RUNTIME and RUNTIME.arch then
+    return M.normalize_arch(RUNTIME.arch)
+  else
+    -- Fallback for cases where RUNTIME is not available (like testing)
+    local uname_ok, uname_result = shell.try_exec("uname -m")
+    if uname_ok and uname_result then
+      uname_result = uname_result:gsub("%s+", "")  -- trim whitespace
+      return M.normalize_arch(uname_result)
+    end
+
+    -- Default fallback to x86_64
+    return "x86_64"
+  end
+end
+
+-- Normalize architecture names to Nix system format
+function M.normalize_arch(arch)
+  arch = arch:lower()
+  if arch == "arm64" or arch == "aarch64" then
+    return "aarch64"
+  elseif arch == "x86_64" or arch == "amd64" then
+    return "x86_64"
+  else
+    return arch
+  end
+end
+
+-- Get Nix system identifier (arch-os)
+function M.get_nix_system()
+  local arch = M.detect_arch()
+  local os = M.detect_os()
+
+  -- Convert OS to Nix system format
+  if os == "macos" then
+    return arch .. "-darwin"
+  elseif os == "linux" then
+    return arch .. "-linux"
+  else
+    return arch .. "-" .. os
   end
 end
 

@@ -3,10 +3,23 @@ function PLUGIN:BackendListVersions(ctx)
   local platform = require("platform")
   local nixhub = require("nixhub")
   local version = require("version")
+  local vscode = require("vscode")
+  local jetbrains = require("jetbrains")
   local tool = ctx.tool
 
   if not tool or tool == "" then
     error("Tool name cannot be empty")
+  end
+
+  -- If this is a JetBrains plugin, return a single "latest" version
+  -- since plugins are managed by the nix-jetbrains-plugins flake
+  if jetbrains.is_plugin(tool) then
+    return { versions = { "latest" } }
+  end
+
+  -- If this is a VSCode extension that uses the install format, also return "latest"
+  if vscode.is_extension(tool) and tool:match("^vscode%+install=") then
+    return { versions = { "latest" } }
   end
 
   -- If this is a flake reference, we return available versions for that flake
