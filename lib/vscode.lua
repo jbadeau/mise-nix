@@ -221,8 +221,46 @@ end
 -- VSIX file creation and installation in temporary directory only
 function M.create_and_install_vsix(ext_id, nix_store_path, tool_name)
   -- VSCode extensions in Nix are located at share/vscode/extensions/{ext_id}
-  local ext_path = nix_store_path .. "/share/vscode/extensions/" .. ext_id
+  -- The directory name might have different casing than the extension ID
+  local ext_path = nil
+
+  -- First try the exact extension ID
+  local test_path = nix_store_path .. "/share/vscode/extensions/" .. ext_id
+  if shell.try_exec('test -d "%s"', test_path) then
+    ext_path = test_path
+  else
+    -- Try to find the actual directory name (case-insensitive)
+    local ok, find_result = shell.try_exec('find "%s/share/vscode/extensions" -maxdepth 1 -type d -iname "%s" 2>/dev/null | head -1',
+                                           nix_store_path, ext_id)
+    if ok and find_result and type(find_result) == "string" and find_result ~= "" then
+      ext_path = find_result:gsub("%s+$", "") -- trim whitespace
+    else
+      -- Last resort: get the first (and likely only) extension directory
+      ok, find_result = shell.try_exec('find "%s/share/vscode/extensions" -maxdepth 1 -type d ! -path "%s/share/vscode/extensions" 2>/dev/null | head -1',
+                                       nix_store_path, nix_store_path)
+      if ok and find_result and type(find_result) == "string" and find_result ~= "" then
+        ext_path = find_result:gsub("%s+$", "")
+        logger.debug("Using found extension directory: " .. ext_path)
+      end
+    end
+  end
+
+  if not ext_path then
+    error("Could not find extension directory for " .. ext_id .. " in " .. nix_store_path)
+  end
+
   local vsix_name = (tool_name or ext_id):gsub("%.", "-") .. ".vsix"
+
+  -- Debug: Check if extension path exists and what's in it
+  logger.debug("Extension path: " .. ext_path)
+  local ls_result = shell.try_exec('ls -la "%s" 2>&1', ext_path)
+  if ls_result then
+    logger.debug("Extension directory contents: " .. tostring(ls_result))
+  end
+
+  -- Check if package.json exists directly in the extension path
+  local pkg_check = shell.try_exec('test -f "%s/package.json" && echo "package.json found at root" || echo "package.json NOT at root"', ext_path)
+  logger.debug("Package.json check: " .. tostring(pkg_check))
 
   -- Create VSIX file with proper structure using temporary directory
   local vsix_path = nil
@@ -246,6 +284,13 @@ function M.create_and_install_vsix(ext_id, nix_store_path, tool_name)
       end
       -- Fix permissions on copied files so they can be deleted
       shell.exec('chmod -R u+w "%s"', temp_dir)
+
+      -- Debug: Check what's actually in the temp directory after copy
+      local temp_contents = shell.try_exec('ls -la "%s/extension/" 2>&1 | head -5', temp_dir)
+      logger.debug("Temp extension directory contents: " .. tostring(temp_contents))
+
+      local pkg_in_temp = shell.try_exec('test -f "%s/extension/package.json" && echo "package.json exists in temp" || echo "package.json MISSING in temp"', temp_dir)
+      logger.debug("Package.json in temp: " .. tostring(pkg_in_temp))
 
       -- Create required VSIX manifest files
       M.create_vsix_manifest(temp_dir, ext_id, ext_path)
