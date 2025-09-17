@@ -3,35 +3,113 @@ local nixhub = require("nixhub")
 
 local M = {}
 
--- Validate version string format
+-- Validate version string format (liberal approach for any package version)
 function M.is_valid(version)
   if type(version) ~= "string" or version == "" then return false end
-  return version:match("^[%w%.%-]+$") ~= nil
+  -- Accept any version string that contains alphanumeric chars and common separators
+  -- This covers semantic versions, dates, git hashes, arbitrary tags, etc.
+  return version:match("^[%w%.%-+_:~]+$") ~= nil
 end
 
--- Parse semantic version string into components
-function M.parse_semver(version)
-  local major, minor, patch, pre = version:match("^(%d+)%.(%d+)%.(%d+)[%-%.]?(.*)$")
+-- Parse version string into comparable components
+function M.parse_version(version)
+  -- Try standard semantic version first (e.g., "17.0.14", "17.0.14+7")
+  local major, minor, patch, pre = version:match("^(%d+)%.(%d+)%.(%d+)[%-%+%.]?(.*)$")
+  if major then
+    return {
+      type = "semantic",
+      major = tonumber(major),
+      minor = tonumber(minor),
+      patch = tonumber(patch),
+      pre = pre or "",
+      original = version
+    }
+  end
+
+  -- Try to extract numeric components from various formats
+  local numbers = {}
+  for num in version:gmatch("%d+") do
+    table.insert(numbers, tonumber(num))
+  end
+
+  if #numbers >= 1 then
+    return {
+      type = "numeric",
+      major = numbers[1] or 0,
+      minor = numbers[2] or 0,
+      patch = numbers[3] or 0,
+      numbers = numbers,
+      original = version
+    }
+  end
+
+  -- Fallback for non-numeric versions (git hashes, date strings, etc.)
   return {
-    major = tonumber(major) or 0,
-    minor = tonumber(minor) or 0,
-    patch = tonumber(patch) or 0,
-    pre = pre or ""
+    type = "string",
+    major = 0,
+    minor = 0,
+    patch = 0,
+    original = version
   }
 end
 
--- Compare two semantic versions (returns true if a < b)
+-- Keep the old function name for backward compatibility
+function M.parse_semver(version)
+  local parsed = M.parse_version(version)
+  return {
+    major = parsed.major,
+    minor = parsed.minor,
+    patch = parsed.patch,
+    pre = parsed.pre or ""
+  }
+end
+
+-- Compare two versions intelligently (returns true if a < b)
+function M.version_less_than(a, b)
+  local va = M.parse_version(a)
+  local vb = M.parse_version(b)
+
+  -- If both are semantic or numeric, compare numerically
+  if (va.type == "semantic" or va.type == "numeric") and (vb.type == "semantic" or vb.type == "numeric") then
+    if va.major ~= vb.major then return va.major < vb.major end
+    if va.minor ~= vb.minor then return va.minor < vb.minor end
+    if va.patch ~= vb.patch then return va.patch < vb.patch end
+
+    -- For semantic versions, handle pre-release tags
+    if va.type == "semantic" and vb.type == "semantic" then
+      if va.pre == "" and vb.pre ~= "" then return false end
+      if va.pre ~= "" and vb.pre == "" then return true end
+      return va.pre < vb.pre
+    end
+
+    -- For numeric versions with more components, compare them
+    if va.numbers and vb.numbers then
+      local max_len = math.max(#va.numbers, #vb.numbers)
+      for i = 4, max_len do
+        local a_num = va.numbers[i] or 0
+        local b_num = vb.numbers[i] or 0
+        if a_num ~= b_num then return a_num < b_num end
+      end
+    end
+
+    return false -- versions are equal
+  end
+
+  -- If types differ, prefer semantic/numeric over string
+  if (va.type == "semantic" or va.type == "numeric") and vb.type == "string" then
+    return false -- numeric versions are "newer"
+  end
+  if va.type == "string" and (vb.type == "semantic" or vb.type == "numeric") then
+    return true -- string versions are "older"
+  end
+
+  -- Both are string types, use lexicographic comparison
+  return va.original < vb.original
+end
+
+-- Keep the old function name for backward compatibility
 function M.semver_less_than(a, b)
-  local va = M.parse_semver(a)
-  local vb = M.parse_semver(b)
-
-  if va.major ~= vb.major then return va.major < vb.major end
-  if va.minor ~= vb.minor then return va.minor < vb.minor end
-  if va.patch ~= vb.patch then return va.patch < vb.patch end
-
-  if va.pre == "" and vb.pre ~= "" then return false end
-  if va.pre ~= "" and vb.pre == "" then return true end
-  return va.pre < vb.pre
+  return M.version_less_than(a, b)
 end
 
 -- Find the latest stable version from a list of versions
