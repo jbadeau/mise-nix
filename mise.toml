@@ -1,6 +1,6 @@
 [env]
 LUA_PATH="lib/?.lua;;"
-NX_NO_CLOUD="true"
+NX_NO_CLOUD=true
 
 [tools]
 lua = "5.4.8"

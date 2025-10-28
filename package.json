@@ -23,6 +23,12 @@
       "e2e": {
         "command": "shellspec"
       },
+      "e2e:container": {
+        "command": "docker compose up --build --abort-on-container-exit --exit-code-from e2e-tests"
+      },
+      "e2e:container:clean": {
+        "command": "docker compose down -v"
+      },
       "nx-release-publish": {
         "command": "echo noop"
       }

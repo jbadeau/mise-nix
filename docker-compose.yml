@@ -1,0 +1,40 @@
+services:
+  e2e-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mise-nix-e2e
+    volumes:
+      # Mount source code (read-only to prevent modifications)
+      - ./spec:/workspace/spec:ro
+      - ./lib:/workspace/lib:ro
+      - ./.shellspec:/workspace/.shellspec:ro
+      - ./package.json:/workspace/package.json:ro
+
+      # Create named volume for nix store to speed up subsequent runs
+      - nix-store:/nix
+
+      # Create volume for mise data (isolated from host) - using 'code' user home
+      - mise-data:/home/code/.local/share/mise
+      - mise-cache:/home/code/.cache/mise
+      - mise-config:/home/code/.config/mise
+    environment:
+      # Test environment variables
+      - MISE_QUIET=false
+      - MISE_LOG_LEVEL=info
+      - CI=true
+
+      # Optionally enable local flakes for testing
+      # - MISE_NIX_ALLOW_LOCAL_FLAKES=true
+    command: ["mise", "exec", "nix:shellspec@latest", "--", "shellspec", "--format", "documentation"]
+
+volumes:
+  # Named volumes for test isolation and performance
+  nix-store:
+    driver: local
+  mise-data:
+    driver: local
+  mise-cache:
+    driver: local
+  mise-config:
+    driver: local
