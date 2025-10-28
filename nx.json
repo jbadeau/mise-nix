@@ -15,7 +15,9 @@
         "createRelease": "github"
       }
     },
-    "releaseTagPattern": "mise-nix@{version}"
+    "releaseTag": {
+      "pattern": "mise-nix@{version}"
+    }
   },
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],

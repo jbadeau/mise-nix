@@ -6,29 +6,17 @@
   "private": true,
   "dependencies": {},
   "devDependencies": {
-    "@nx/js": "21.5.2",
+    "@nx/js": "22.0.1",
     "@swc-node/register": "~1.9.1",
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
-    "nx": "21.5.2",
+    "nx": "22.0.1",
     "prettier": "^2.6.2",
     "tslib": "^2.3.0",
     "typescript": "5.9.2"
   },
   "nx": {
     "targets": {
-      "test": {
-        "command": "busted -p %.spec%.lua lib"
-      },
-      "e2e": {
-        "command": "shellspec"
-      },
-      "e2e:container": {
-        "command": "docker compose up --build --abort-on-container-exit --exit-code-from e2e-tests"
-      },
-      "e2e:container:clean": {
-        "command": "docker compose down -v"
-      },
       "nx-release-publish": {
         "command": "echo noop"
       }

@@ -22,6 +22,14 @@ run = "busted -p %.spec%.lua lib"
 description = "e2e"
 run = "shellspec"
 
+[tasks."e2e:container"]
+description = "Run e2e tests in container"
+run = "docker compose up --build --abort-on-container-exit --exit-code-from e2e-tests"
+
+[tasks."e2e:container:clean"]
+description = "Clean up container volumes"
+run = "docker compose down -v"
+
 [tasks.nuke]
 description = "nuke"
 run = [
