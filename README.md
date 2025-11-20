@@ -104,8 +104,7 @@ Use `github+` instead of `github:` due to mise parsing limitations.
 
 ## Configuration
 
-Environment variables:
-
+Environment variables can be used to configure this plugin, if needed. Some use cases are the following:
 ```sh
 export MISE_NIX_ALLOW_LOCAL_FLAKES=true  # Enable local flakes
 export MISE_NIX_NIXHUB_BASE_URL="https://custom.nixhub.io"  # Custom nixhub
