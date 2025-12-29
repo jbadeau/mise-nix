@@ -73,6 +73,34 @@ mise install "nix:mytool@./my-project"
 mise install "nix:vscode+install=vscode-extensions.golang.go"
 ```
 
+### Unfree Packages
+
+Some packages (e.g. Discord) are marked as unfree in nixpkgs. To install them:
+
+```sh
+# Using MISE_NIX env var (recommended - auto-sets NIXPKGS_ALLOW_UNFREE)
+export MISE_NIX_ALLOW_UNFREE=true
+mise install nix:discord
+
+# Or using native Nix env var directly
+export NIXPKGS_ALLOW_UNFREE=1
+mise install nix:discord
+```
+
+### Insecure Packages
+
+Some packages with known vulnerabilities require explicit opt-in:
+
+```sh
+# Using MISE_NIX env var (recommended - auto-sets NIXPKGS_ALLOW_INSECURE)
+export MISE_NIX_ALLOW_INSECURE=true
+mise install nix:some-package
+
+# Or using native Nix env var directly
+export NIXPKGS_ALLOW_INSECURE=1
+mise install nix:some-package
+```
+
 ### JetBrains Plugins
 
 Install plugins from the [nix-jetbrains-plugins](https://github.com/theCapypara/nix-jetbrains-plugins) repository:
@@ -104,11 +132,24 @@ Use `github+` instead of `github:` due to mise parsing limitations.
 
 ## Configuration
 
-Environment variables can be used to configure this plugin, if needed. Some use cases are the following:
-```sh
-export MISE_NIX_ALLOW_LOCAL_FLAKES=true  # Enable local flakes
-export MISE_NIX_NIXHUB_BASE_URL="https://custom.nixhub.io"  # Custom nixhub
-```
+Environment variables can be used to configure this plugin:
+
+| Variable | Description |
+|----------|-------------|
+| `MISE_NIX_ALLOW_UNFREE` | Set to `true` to allow unfree packages (auto-sets `NIXPKGS_ALLOW_UNFREE=1`) |
+| `MISE_NIX_ALLOW_INSECURE` | Set to `true` to allow insecure packages (auto-sets `NIXPKGS_ALLOW_INSECURE=1`) |
+| `MISE_NIX_ALLOW_LOCAL_FLAKES` | Set to `true` to enable local flake references |
+| `MISE_NIX_NIXHUB_BASE_URL` | Custom nixhub.io URL |
+| `MISE_NIX_NIXPKGS_REPO_URL` | Custom nixpkgs repository URL |
+| `MISE_NIX_GITHUB_ENTERPRISE_URL` | GitHub Enterprise URL for flake references |
+| `MISE_NIX_GITLAB_ENTERPRISE_URL` | GitLab Enterprise URL for flake references |
+
+Native Nix env vars are also supported:
+
+| Variable | Description |
+|----------|-------------|
+| `NIXPKGS_ALLOW_UNFREE` | Set to `1` to allow unfree packages (enables `--impure`) |
+| `NIXPKGS_ALLOW_INSECURE` | Set to `1` to allow insecure packages (enables `--impure`) |
 
 ## Nix Setup
 
@@ -122,11 +163,24 @@ trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDS
 
 ## Development
 
-```sh
-# Setup
-mise init # Install and link
+### Prerequisites
 
-# Tests
-mise test # Unit tests
-mise e2e  # Integration tests
+Install Lua 5.4 and busted for running unit tests:
+
+```sh
+# macOS
+brew install lua luarocks
+luarocks install busted
+
+# Ubuntu/Debian
+sudo apt-get install lua5.4 luarocks
+sudo luarocks install busted
+```
+
+### Setup and Tests
+
+```sh
+mise init  # Link the plugin
+mise test  # Unit tests
+mise e2e   # Integration tests
 ```

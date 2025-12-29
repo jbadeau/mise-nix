@@ -1,7 +1,11 @@
 -- Mock dependencies for build tests
 package.loaded["platform"] = {
   get_nixpkgs_repo_url = function() return "https://github.com/NixOS/nixpkgs" end,
-  choose_store_path_with_bin = function(outputs) return outputs[1], true end
+  choose_store_path_with_bin = function(outputs) return outputs[1], true end,
+  get_impure_flag = function() return "" end,
+  get_env_prefix = function() return "" end,
+  get_nix_build_prefix = function() return "" end,
+  needs_impure_mode = function() return false end
 }
 
 package.loaded["flake"] = {

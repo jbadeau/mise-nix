@@ -11,6 +11,13 @@ package.loaded["security"] = {
   validate_local_flake = function(flake_ref) return true end
 }
 
+package.loaded["platform"] = {
+  get_impure_flag = function() return "" end,
+  get_env_prefix = function() return "" end,
+  get_nix_build_prefix = function() return "" end,
+  needs_impure_mode = function() return false end
+}
+
 local flake = require("flake")
 
 describe("Flake module", function()
