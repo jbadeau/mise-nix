@@ -79,6 +79,47 @@ function M.get_nixpkgs_repo_url()
   return os.getenv("MISE_NIX_NIXPKGS_REPO_URL") or "https://github.com/NixOS/nixpkgs"
 end
 
+-- Check if impure mode is needed for nix build
+-- Supports both native Nix env vars and MISE_NIX_ escape hatches
+function M.needs_impure_mode()
+  local nixpkgs_unfree = os.getenv("NIXPKGS_ALLOW_UNFREE")
+  local nixpkgs_insecure = os.getenv("NIXPKGS_ALLOW_INSECURE")
+  local mise_unfree = os.getenv("MISE_NIX_ALLOW_UNFREE") == "true"
+  local mise_insecure = os.getenv("MISE_NIX_ALLOW_INSECURE") == "true"
+
+  return mise_unfree or mise_insecure
+      or nixpkgs_unfree == "1" or nixpkgs_unfree == "true"
+      or nixpkgs_insecure == "1" or nixpkgs_insecure == "true"
+end
+
+-- Get environment variable prefix for nix build command
+-- Automatically sets NIXPKGS env vars when MISE_NIX ones are used
+function M.get_env_prefix()
+  local prefix = ""
+  local mise_unfree = os.getenv("MISE_NIX_ALLOW_UNFREE") == "true"
+  local mise_insecure = os.getenv("MISE_NIX_ALLOW_INSECURE") == "true"
+
+  -- If MISE_NIX env var is set, ensure the corresponding NIXPKGS env var is passed
+  if mise_unfree and not os.getenv("NIXPKGS_ALLOW_UNFREE") then
+    prefix = prefix .. "NIXPKGS_ALLOW_UNFREE=1 "
+  end
+  if mise_insecure and not os.getenv("NIXPKGS_ALLOW_INSECURE") then
+    prefix = prefix .. "NIXPKGS_ALLOW_INSECURE=1 "
+  end
+
+  return prefix
+end
+
+-- Get the impure flag for nix build command
+function M.get_impure_flag()
+  return M.needs_impure_mode() and "--impure " or ""
+end
+
+-- Get the full nix build prefix (env vars + impure flag)
+function M.get_nix_build_prefix()
+  return M.get_env_prefix() .. M.get_impure_flag()
+end
+
 -- Choose the best store path that has binaries
 function M.choose_store_path_with_bin(outputs)
   local candidates = {}

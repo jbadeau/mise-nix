@@ -39,13 +39,20 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
 
-      # Run mise init first to link the nix plugin
-      - name: Run mise init
-        run: mise init
+      # Install Lua and busted via apt (workaround for mise lua plugin luarocks 3.13.0 bug)
+      - name: Install Lua and busted
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.4 liblua5.4-dev luarocks
+          sudo luarocks install busted
 
-      # Install tools from mise.toml (node, lua, nix:shellspec)
+      # Link the nix plugin (skip mise init task to avoid lua installation)
+      - name: Link nix plugin
+        run: mise plugin link nix $PWD --force
+
+      # Install only node and nix:shellspec (lua/busted installed via apt)
       - name: Install mise tools
-        run: mise install
+        run: mise install node nix:shellspec
 
       # Install VSCode and virtual display for extension tests
       - name: Install VSCode and dependencies
@@ -58,13 +65,13 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
 
-      # Run tests and build (use mise to ensure tools are in PATH)
+      # Run tests and build
       - name: Run tests
-        run: mise exec -- npx nx run-many -t lint test e2e
-
-      # Nx Cloud recommends fixes for failures to help you get CI green faster
-      - run: mise exec -- npx nx fix-ci
-        if: always()
+        run: |
+          eval "$(mise env)"
+          npx nx run-many -t lint test e2e
+        env:
+          LUA_PATH: "lib/?.lua;;"
 
   # Release job - runs only when MR is merged to main
   release:
@@ -90,13 +97,20 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
 
-      # Run mise init first to link the nix plugin
-      - name: Run mise init
-        run: mise init
+      # Install Lua and busted via apt (workaround for mise lua plugin luarocks 3.13.0 bug)
+      - name: Install Lua and busted
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.4 liblua5.4-dev luarocks
+          sudo luarocks install busted
 
-      # Install tools from mise.toml (node, lua, nix:shellspec)
+      # Link the nix plugin (skip mise init task to avoid lua installation)
+      - name: Link nix plugin
+        run: mise plugin link nix $PWD --force
+
+      # Install only node and nix:shellspec (lua/busted installed via apt)
       - name: Install mise tools
-        run: mise install
+        run: mise install node nix:shellspec
 
       # Install VSCode and virtual display for extension tests
       - name: Install VSCode and dependencies
@@ -109,13 +123,13 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
 
-      # Run tests and build (use mise to ensure tools are in PATH)
+      # Run tests and build
       - name: Run tests
-        run: mise exec -- npx nx run-many -t lint test e2e
-
-      # Nx Cloud recommends fixes for failures to help you get CI green faster
-      - run: mise exec -- npx nx fix-ci
-        if: always()
+        run: |
+          eval "$(mise env)"
+          npx nx run-many -t lint test e2e
+        env:
+          LUA_PATH: "lib/?.lua;;"
 
       - name: Create release
         run: |
