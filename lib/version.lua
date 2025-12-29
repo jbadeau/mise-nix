@@ -64,54 +64,6 @@ function M.parse_semver(version)
   }
 end
 
--- Compare two versions intelligently (returns true if a < b)
-function M.version_less_than(a, b)
-  local va = M.parse_version(a)
-  local vb = M.parse_version(b)
-
-  -- If both are semantic or numeric, compare numerically
-  if (va.type == "semantic" or va.type == "numeric") and (vb.type == "semantic" or vb.type == "numeric") then
-    if va.major ~= vb.major then return va.major < vb.major end
-    if va.minor ~= vb.minor then return va.minor < vb.minor end
-    if va.patch ~= vb.patch then return va.patch < vb.patch end
-
-    -- For semantic versions, handle pre-release tags
-    if va.type == "semantic" and vb.type == "semantic" then
-      if va.pre == "" and vb.pre ~= "" then return false end
-      if va.pre ~= "" and vb.pre == "" then return true end
-      return va.pre < vb.pre
-    end
-
-    -- For numeric versions with more components, compare them
-    if va.numbers and vb.numbers then
-      local max_len = math.max(#va.numbers, #vb.numbers)
-      for i = 4, max_len do
-        local a_num = va.numbers[i] or 0
-        local b_num = vb.numbers[i] or 0
-        if a_num ~= b_num then return a_num < b_num end
-      end
-    end
-
-    return false -- versions are equal
-  end
-
-  -- If types differ, prefer semantic/numeric over string
-  if (va.type == "semantic" or va.type == "numeric") and vb.type == "string" then
-    return false -- numeric versions are "newer"
-  end
-  if va.type == "string" and (vb.type == "semantic" or vb.type == "numeric") then
-    return true -- string versions are "older"
-  end
-
-  -- Both are string types, use lexicographic comparison
-  return va.original < vb.original
-end
-
--- Keep the old function name for backward compatibility
-function M.semver_less_than(a, b)
-  return M.version_less_than(a, b)
-end
-
 -- Find the latest stable version from a list of versions
 function M.find_latest_stable(versions)
   for i = #versions, 1, -1 do
@@ -154,7 +106,6 @@ function M.resolve_alias(requested_version, compatible_releases)
     for _, release in ipairs(compatible_releases) do
       table.insert(versions, release.version)
     end
-    table.sort(versions, M.semver_less_than)
     local stable_version = M.find_latest_stable(versions)
     
     for _, release in ipairs(compatible_releases) do
@@ -184,11 +135,6 @@ function M.get_compatible_versions(tool, current_os, current_arch)
   if #compatible == 0 then
     error(string.format("No compatible versions found for %s on %s (%s)", tool, current_os, current_arch))
   end
-
-  -- Sort by version
-  table.sort(compatible, function(a, b) 
-    return M.semver_less_than(a.version, b.version) 
-  end)
 
   return compatible, data
 end
