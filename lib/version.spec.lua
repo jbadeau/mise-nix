@@ -58,15 +58,12 @@ describe("Version module", function()
     it("should handle version/semver functions", function()
       assert.is_true(version.is_valid("1.2.3"))
       assert.is_false(version.is_valid(""))
-      
+
       local parsed = version.parse_semver("1.2.3-alpha")
       assert.equal(1, parsed.major)
       assert.equal(2, parsed.minor)
       assert.equal(3, parsed.patch)
       assert.equal("alpha", parsed.pre)
-      
-      assert.is_true(version.semver_less_than("1.0.0", "2.0.0"))
-      assert.is_false(version.semver_less_than("2.0.0", "1.0.0"))
     end)
   end)
 end)

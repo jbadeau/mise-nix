@@ -51,7 +51,11 @@ function PLUGIN:BackendListVersions(ctx)
     return { versions = {} }
   end
 
-  table.sort(versions, version.semver_less_than)
+  -- Reverse so latest versions appear at the bottom of the list
+  local reversed = {}
+  for i = #versions, 1, -1 do
+    table.insert(reversed, versions[i])
+  end
 
-  return { versions = versions }
+  return { versions = reversed }
 end
