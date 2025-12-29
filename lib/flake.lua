@@ -1,6 +1,7 @@
 -- Nix flake reference handling and manipulation
 local shell = require("shell")
 local logger = require("logger")
+local platform = require("platform")
 
 local M = {}
 
@@ -243,7 +244,9 @@ function M.build(flake_ref, version)
     end
   end
 
-  local cmdline = string.format("nix build --no-link --print-out-paths '%s'", build_ref)
+  local env_prefix = platform.get_env_prefix()
+  local impure_flag = platform.get_impure_flag()
+  local cmdline = string.format("%snix build %s--no-link --print-out-paths '%s'", env_prefix, impure_flag, build_ref)
 
   logger.step("Building flake " .. build_ref .. "...")
   local result = shell.exec(cmdline)

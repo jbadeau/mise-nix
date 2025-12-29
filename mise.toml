@@ -1,6 +1,6 @@
 [env]
 LUA_PATH="lib/?.lua;;"
-NX_NO_CLOUD="true"
+NX_NO_CLOUD=true
 
 [tools]
 lua = "5.4.8"
@@ -11,7 +11,7 @@ node = "24.5.0"
 description = "init"
 run = [
     'mise plugin link nix $PWD --force',
-    'luarocks install busted'
+    'luarocks install busted --force'
 ]
 
 [tasks.test]
@@ -30,3 +30,5 @@ run = [
     "sudo nix-collect-garbage -d && sudo nix --extra-experimental-features nix-command store gc --max 0"
 ]
 
+[settings]
+experimental=true

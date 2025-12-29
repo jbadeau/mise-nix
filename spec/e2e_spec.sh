@@ -114,6 +114,53 @@ Describe "mise-nix plugin"
     End
   End
 
+  Describe "Unfree Packages"
+    It "fails to install unfree package without NIXPKGS_ALLOW_UNFREE"
+      Skip if "NIXPKGS_ALLOW_UNFREE is set" [ -n "${NIXPKGS_ALLOW_UNFREE}" ]
+      Skip if "MISE_NIX_ALLOW_UNFREE is set" [ "${MISE_NIX_ALLOW_UNFREE}" = "true" ]
+
+      When call mise install nix:discord
+      The status should be failure
+      The error should include "unfree"
+    End
+
+    It "can install unfree package with NIXPKGS_ALLOW_UNFREE=1"
+      export NIXPKGS_ALLOW_UNFREE=1
+      When call mise install nix:discord
+      The status should be success
+      The output should include "Successfully installed discord"
+    End
+
+    It "can install unfree package with MISE_NIX_ALLOW_UNFREE=true (auto-sets NIXPKGS)"
+      export MISE_NIX_ALLOW_UNFREE=true
+      # NIXPKGS_ALLOW_UNFREE is auto-set by mise-nix when MISE_NIX_ALLOW_UNFREE=true
+      When call mise install nix:discord
+      The status should be success
+      The output should include "Successfully installed discord"
+    End
+  End
+
+  Describe "Insecure Packages"
+    # Note: Insecure packages change over time based on CVEs
+    # These tests verify the env var mechanism works
+
+    It "can install with NIXPKGS_ALLOW_INSECURE=1 (impure mode enabled)"
+      export NIXPKGS_ALLOW_INSECURE=1
+      # Use a regular package to verify impure mode doesn't break normal installs
+      When call mise install nix:hello
+      The status should be success
+      The output should include "Successfully installed hello"
+    End
+
+    It "can install with MISE_NIX_ALLOW_INSECURE=true (auto-sets NIXPKGS)"
+      export MISE_NIX_ALLOW_INSECURE=true
+      # NIXPKGS_ALLOW_INSECURE is auto-set by mise-nix
+      When call mise install nix:hello
+      The status should be success
+      The output should include "Successfully installed hello"
+    End
+  End
+
   Describe "Local Flakes (Experimental)"
     It "blocks local flakes when disabled"
       Skip if "Local flakes are enabled" [ "${MISE_NIX_ALLOW_LOCAL_FLAKES}" = "true" ]
