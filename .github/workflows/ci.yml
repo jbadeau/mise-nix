@@ -39,20 +39,15 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
 
-      # Install Lua and busted via apt (workaround for mise lua plugin luarocks 3.13.0 bug)
-      - name: Install Lua and busted
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y lua5.4 liblua5.4-dev luarocks
-          sudo luarocks install busted
+      # Install build dependencies for Lua
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libreadline-dev
 
-      # Link the nix plugin (skip mise init task to avoid lua installation)
-      - name: Link nix plugin
-        run: mise plugin link nix $PWD --force
-
-      # Install only node and nix:shellspec (lua/busted installed via apt)
+      # Install all tools from mise.toml and initialize
       - name: Install mise tools
-        run: mise install node nix:shellspec
+        run: |
+          mise install
+          mise run init
 
       # Install VSCode and virtual display for extension tests
       - name: Install VSCode and dependencies
@@ -97,20 +92,15 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
 
-      # Install Lua and busted via apt (workaround for mise lua plugin luarocks 3.13.0 bug)
-      - name: Install Lua and busted
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y lua5.4 liblua5.4-dev luarocks
-          sudo luarocks install busted
+      # Install build dependencies for Lua
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libreadline-dev
 
-      # Link the nix plugin (skip mise init task to avoid lua installation)
-      - name: Link nix plugin
-        run: mise plugin link nix $PWD --force
-
-      # Install only node and nix:shellspec (lua/busted installed via apt)
+      # Install all tools from mise.toml and initialize
       - name: Install mise tools
-        run: mise install node nix:shellspec
+        run: |
+          mise install
+          mise run init
 
       # Install VSCode and virtual display for extension tests
       - name: Install VSCode and dependencies

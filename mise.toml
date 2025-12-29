@@ -1,11 +1,14 @@
 [env]
 LUA_PATH="lib/?.lua;;"
 NX_NO_CLOUD=true
+ASDF_LUA_LUAROCKS_VERSION="3.11.1"
 
 [tools]
-lua = "5.4.8"
+lua = "5.3.6"
 node = "24.5.0"
-"nix:shellspec" = "latest"
+github-cli = "2.83.2"
+shellspec = "0.28.1"
+
 
 [tasks.init]
 description = "init"
