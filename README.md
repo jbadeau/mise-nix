@@ -53,6 +53,9 @@ mise install nix:hello@stable
 mise install "nix:hello@github+nixos/nixpkgs"
 mise install "nix:hello@nixos/nixpkgs#hello"
 
+# GitHub with outputs out,dev
+mise install "nix:enchant@nixos/nixpkgs#enchant^out,dev"
+
 # GitLab
 mise install "nix:mytool@gitlab+group/project"
 
