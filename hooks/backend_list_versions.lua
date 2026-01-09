@@ -28,6 +28,13 @@ function PLUGIN:BackendListVersions(ctx)
     return { versions = versions }
   end
 
+  -- If the requested version is a flake reference, return the version itself
+  -- since flakes don't have traditional version lists
+  local requested_version = ctx.version
+  if requested_version and flake.is_reference(requested_version) then
+    return { versions = { requested_version } }
+  end
+
   -- Use traditional nixhub.io workflow for regular package names
   local current_os = platform.normalize_os(RUNTIME.osType)
   local current_arch = RUNTIME.archType:lower()

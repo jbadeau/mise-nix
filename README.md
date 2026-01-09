@@ -56,8 +56,11 @@ mise install "nix:hello@nixos/nixpkgs#hello"
 # GitLab
 mise install "nix:mytool@gitlab+group/project"
 
-# Git URLs
-mise install "nix:hello@git+https://github.com/nixos/nixpkgs.git"
+# Git HTTPS URLs
+mise install "nix:hello@https+github.com/nixos/nixpkgs.git#hello"
+
+# Git SSH URLs
+mise install "nix:mytool@ssh+git@github.com/owner/repo.git#default"
 ```
 
 ### Local Flakes
@@ -128,7 +131,14 @@ The plugin will be automatically extracted to the correct JetBrains IDE plugin d
 
 ## Limitations
 
-Use `github+` instead of `github:` due to mise parsing limitations.
+Mise rejects colons (`:`) in version strings. Use these workaround prefixes:
+
+| Instead of | Use |
+|------------|-----|
+| `github:owner/repo` | `github+owner/repo` |
+| `gitlab:group/project` | `gitlab+group/project` |
+| `git+https://host/repo.git` | `https+host/repo.git` |
+| `git+ssh://git@host/repo.git` | `ssh+git@host/repo.git` |
 
 ## Configuration
 
@@ -141,8 +151,6 @@ Environment variables can be used to configure this plugin:
 | `MISE_NIX_ALLOW_LOCAL_FLAKES` | Set to `true` to enable local flake references |
 | `MISE_NIX_NIXHUB_BASE_URL` | Custom nixhub.io URL |
 | `MISE_NIX_NIXPKGS_REPO_URL` | Custom nixpkgs repository URL |
-| `MISE_NIX_GITHUB_ENTERPRISE_URL` | GitHub Enterprise URL for flake references |
-| `MISE_NIX_GITLAB_ENTERPRISE_URL` | GitLab Enterprise URL for flake references |
 
 Native Nix env vars are also supported:
 
@@ -163,21 +171,13 @@ trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDS
 
 ## Development
 
-### Prerequisites
+### Setup and Tests
 
-Install Lua 5.4 and busted for running unit tests:
+Install Lua via brew (asdf plugin has a bug with LuaRocks 3.13.0):
 
 ```sh
-# macOS
 brew install lua luarocks
-luarocks install busted
-
-# Ubuntu/Debian
-sudo apt-get install lua5.4 luarocks
-sudo luarocks install busted
 ```
-
-### Setup and Tests
 
 ```sh
 mise init  # Link the plugin

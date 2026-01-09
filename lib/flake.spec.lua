@@ -37,10 +37,62 @@ describe("Flake module", function()
       assert.is_true(flake.is_reference("vscode-extensions.ms-python.python"))
     end)
 
+    it("should detect https+ workaround prefix", function()
+      assert.is_true(flake.is_reference("https+github.com/nixos/nixpkgs.git#hello"))
+      assert.is_true(flake.is_reference("https+gitlab.example.com/group/project.git#default"))
+    end)
+
+    it("should detect ssh+ workaround prefix", function()
+      assert.is_true(flake.is_reference("ssh+git@github.com/nixos/nixpkgs.git#hello"))
+      assert.is_true(flake.is_reference("ssh+gitlab.example.com/group/project.git#default"))
+    end)
+
+    it("should detect github+ workaround prefix", function()
+      assert.is_true(flake.is_reference("github+nixos/nixpkgs#hello"))
+      assert.is_true(flake.is_reference("github+owner/repo"))
+    end)
+
+    it("should detect gitlab+ workaround prefix", function()
+      assert.is_true(flake.is_reference("gitlab+group/project#default"))
+      assert.is_true(flake.is_reference("gitlab+owner/repo"))
+    end)
+
     it("should return false for non-flake references", function()
       assert.is_false(flake.is_reference("nodejs"))
       assert.is_false(flake.is_reference(""))
       assert.is_false(flake.is_reference(nil))
+    end)
+  end)
+
+  describe("convert_custom_git_prefix", function()
+    it("should convert https+ to git+https://", function()
+      local result = flake.convert_custom_git_prefix("https+github.com/nixos/nixpkgs.git#hello")
+      assert.equal("git+https://github.com/nixos/nixpkgs.git#hello", result)
+    end)
+
+    it("should convert ssh+ to git+ssh://", function()
+      local result = flake.convert_custom_git_prefix("ssh+git@github.com/nixos/nixpkgs.git#hello")
+      assert.equal("git+ssh://git@github.com/nixos/nixpkgs.git#hello", result)
+    end)
+
+    it("should convert github+ to github:", function()
+      local result = flake.convert_custom_git_prefix("github+nixos/nixpkgs#hello")
+      assert.equal("github:nixos/nixpkgs#hello", result)
+    end)
+
+    it("should convert gitlab+ to gitlab:", function()
+      local result = flake.convert_custom_git_prefix("gitlab+group/project#default")
+      assert.equal("gitlab:group/project#default", result)
+    end)
+
+    it("should pass through standard nix URLs unchanged", function()
+      local result = flake.convert_custom_git_prefix("github:nixos/nixpkgs#hello")
+      assert.equal("github:nixos/nixpkgs#hello", result)
+    end)
+
+    it("should handle nil and empty strings", function()
+      assert.is_nil(flake.convert_custom_git_prefix(nil))
+      assert.equal("", flake.convert_custom_git_prefix(""))
     end)
   end)
 
