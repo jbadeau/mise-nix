@@ -1,19 +1,18 @@
 [env]
 LUA_PATH="lib/?.lua;;"
 NX_NO_CLOUD=true
-ASDF_LUA_LUAROCKS_VERSION="3.11.1"
 
 [tools]
-lua = "5.3.6"
+# lua via brew (asdf plugin has LuaRocks 3.13.0 bug)
 node = "24.5.0"
 github-cli = "2.83.2"
 shellspec = "0.28.1"
-
 
 [tasks.init]
 description = "init"
 run = [
     'mise plugin link nix $PWD --force',
+    'command -v lua >/dev/null || (echo "Install lua: brew install lua luarocks" && exit 1)',
     'luarocks install busted --force'
 ]
 

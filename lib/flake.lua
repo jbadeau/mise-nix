@@ -34,8 +34,6 @@ function M.is_reference(tool)
     "^vscode%+install=vscode%-extensions%.", -- vscode+install=vscode-extensions.publisher.extension (VSCode extension install)
     "^ssh%+",             -- ssh+host/repo.git#package (for tool@source only)
     "^https%+",           -- https+host/repo.git#package (for tool@source only)
-    "^ghe%+",             -- ghe+user/repo#package (GitHub Enterprise)
-    "^gli%+",             -- gli+group/project#package (GitLab Enterprise)
     "^vscode%-extensions%.", -- vscode-extensions.publisher.extension (normal package)
   }
 
@@ -80,32 +78,12 @@ function M.convert_custom_git_prefix(version)
     return "github:" .. path
   end
   
-  -- GitLab shorthand: gitlab+group/project -> gitlab:group/project  
+  -- GitLab shorthand: gitlab+group/project -> gitlab:group/project
   if version:match("^gitlab%+[%w%-_%.]+/[%w%-_%.]+") then
     local path = version:gsub("^gitlab%+", "")
     return "gitlab:" .. path
   end
-  
-  -- GitHub Enterprise: ghe+user/repo -> git+https://github.company.com/user/repo
-  -- Only transform if environment variable is set
-  if version:match("^ghe%+[%w%-_%.]+/[%w%-_%.]+") then
-    local github_enterprise_url = os.getenv("MISE_NIX_GITHUB_ENTERPRISE_URL")
-    if github_enterprise_url then
-      local path = version:gsub("^ghe%+", "")
-      return "git+https://" .. github_enterprise_url:gsub("https://", "") .. "/" .. path
-    end
-  end
-  
-  -- GitLab Enterprise: gli+group/project -> git+https://gitlab.company.com/group/project
-  -- Only transform if environment variable is set
-  if version:match("^gli%+[%w%-_%.]+/[%w%-_%.]+") then
-    local gitlab_enterprise_url = os.getenv("MISE_NIX_GITLAB_ENTERPRISE_URL")
-    if gitlab_enterprise_url then
-      local path = version:gsub("^gli%+", "")
-      return "git+https://" .. gitlab_enterprise_url:gsub("https://", "") .. "/" .. path
-    end
-  end
-  
+
   return version
 end
 

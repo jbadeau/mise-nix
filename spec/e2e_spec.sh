@@ -112,6 +112,24 @@ Describe "mise-nix plugin"
       When call mise ls-remote "nix:hello@ssh+git@github.com/nixos/nixpkgs.git"
       The status should be success
     End
+
+    It "supports https+ workaround syntax for ls-remote"
+      When call mise ls-remote "nix:hello@https+github.com/nixos/nixpkgs.git#hello"
+      The status should be success
+      The output should be blank
+    End
+
+    It "supports https+ workaround syntax for install"
+      When call mise install "nix:hello@https+github.com/nixos/nixpkgs.git#hello"
+      The status should be success
+      The output should include "Building flake"
+    End
+
+    It "can execute from https+ source"
+      When call mise exec "nix:hello@https+github.com/nixos/nixpkgs.git#hello" -- hello
+      The status should be success
+      The output should include "Hello, world!"
+    End
   End
 
   Describe "Unfree Packages"
