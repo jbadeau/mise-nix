@@ -39,15 +39,18 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
 
-      # Install build dependencies for Lua
-      - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y libreadline-dev
+      # Install Lua and dependencies (mise.toml uses brew on macOS, apt on Linux)
+      - name: Install Lua and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.3 liblua5.3-dev luarocks libreadline-dev
 
       # Install all tools from mise.toml and initialize
       - name: Install mise tools
         run: |
           mise install
-          mise run init
+          mise plugin link nix $PWD --force
+          luarocks install busted --force
 
       # Install VSCode and virtual display for extension tests
       - name: Install VSCode and dependencies
@@ -92,15 +95,18 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
 
-      # Install build dependencies for Lua
-      - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y libreadline-dev
+      # Install Lua and dependencies (mise.toml uses brew on macOS, apt on Linux)
+      - name: Install Lua and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.3 liblua5.3-dev luarocks libreadline-dev
 
       # Install all tools from mise.toml and initialize
       - name: Install mise tools
         run: |
           mise install
-          mise run init
+          mise plugin link nix $PWD --force
+          luarocks install busted --force
 
       # Install VSCode and virtual display for extension tests
       - name: Install VSCode and dependencies
