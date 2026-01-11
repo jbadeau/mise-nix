@@ -50,7 +50,7 @@ jobs:
         run: |
           mise install
           mise plugin link nix $PWD --force
-          luarocks install busted --force
+          sudo luarocks install busted --force
 
       # Install VSCode and virtual display for extension tests
       - name: Install VSCode and dependencies
@@ -106,7 +106,7 @@ jobs:
         run: |
           mise install
           mise plugin link nix $PWD --force
-          luarocks install busted --force
+          sudo luarocks install busted --force
 
       # Install VSCode and virtual display for extension tests
       - name: Install VSCode and dependencies
