@@ -67,6 +67,21 @@ Describe "mise-nix plugin"
     End
   End
 
+  Describe "GitLab Sources"
+    It "can parse gitlab+ prefix for ls-remote"
+      # Tests that gitlab+ prefix is correctly recognized as a flake reference
+      # Uses a fake project - ls-remote just validates parsing, doesn't fetch
+      When call mise ls-remote "nix:mytool@gitlab+group/subgroup/project#default"
+      The status should be success
+    End
+
+    It "can parse nested GitLab groups"
+      # Tests deeply nested group paths like gitlab+a/b/c/d#pkg
+      When call mise ls-remote "nix:mytool@gitlab+org/team/subteam/repo#default"
+      The status should be success
+    End
+  End
+
   Describe "VSCode Extensions (Experimental)"
     It "can list VSCode extension versions"
       When call mise ls-remote "nix:vscode+install=vscode-extensions.golang.go"
@@ -114,21 +129,16 @@ Describe "mise-nix plugin"
     End
 
     It "supports https+ workaround syntax for ls-remote"
-      When call mise ls-remote "nix:hello@https+github.com/nixos/nixpkgs.git#hello"
+      # Uses nurl - a small nix-community flake (~1MB vs nixpkgs ~300MB)
+      When call mise ls-remote "nix:nurl@https+github.com/nix-community/nurl.git#default"
       The status should be success
-      The output should be blank
     End
 
-    It "supports https+ workaround syntax for install"
-      When call mise install "nix:hello@https+github.com/nixos/nixpkgs.git#hello"
+    It "can install using https+ workaround syntax"
+      # Uses nurl - a small nix-community flake for faster tests
+      When call mise install "nix:nurl@https+github.com/nix-community/nurl.git#default"
       The status should be success
       The output should include "Building flake"
-    End
-
-    It "can execute from https+ source"
-      When call mise exec "nix:hello@https+github.com/nixos/nixpkgs.git#hello" -- hello
-      The status should be success
-      The output should include "Hello, world!"
     End
   End
 

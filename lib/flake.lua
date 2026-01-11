@@ -30,7 +30,7 @@ function M.is_reference(tool)
     
     -- Custom patterns with plus separator
     "^github%+",          -- github+owner/repo#package (GitHub shorthand)
-    "^gitlab%+",          -- gitlab+group/project#package (GitLab shorthand)  
+    "^gitlab%+",          -- gitlab+group/project#package (GitLab shorthand)
     "^vscode%+install=vscode%-extensions%.", -- vscode+install=vscode-extensions.publisher.extension (VSCode extension install)
     "^ssh%+",             -- ssh+host/repo.git#package (for tool@source only)
     "^https%+",           -- https+host/repo.git#package (for tool@source only)
@@ -73,13 +73,15 @@ function M.convert_custom_git_prefix(version)
   end
   
   -- GitHub shorthand: github+user/repo -> github:user/repo
-  if version:match("^github%+[%w%-_%.]+/[%w%-_%.]+") then
+  -- Supports nested paths like github+owner/repo/subdir
+  if version:match("^github%+") then
     local path = version:gsub("^github%+", "")
     return "github:" .. path
   end
-  
+
   -- GitLab shorthand: gitlab+group/project -> gitlab:group/project
-  if version:match("^gitlab%+[%w%-_%.]+/[%w%-_%.]+") then
+  -- Supports nested groups like gitlab+group/subgroup/project
+  if version:match("^gitlab%+") then
     local path = version:gsub("^gitlab%+", "")
     return "gitlab:" .. path
   end
@@ -88,34 +90,15 @@ function M.convert_custom_git_prefix(version)
 end
 
 -- Parse Git hosting shortcuts with enhanced ref support
+-- Nix natively supports these formats, so we just pass through:
+--   github:owner/repo (default branch)
+--   github:owner/repo/ref (specific branch/tag)
+--   github:owner/repo?ref=X (query param style)
+--   gitlab:group/subgroup/project (nested groups)
+--   gitlab:group/project?ref=X (query param style)
 function M.parse_git_ref_syntax(flake_url)
   if not flake_url or type(flake_url) ~= "string" then return flake_url end
-  
-  -- Handle github:owner/repo/branch syntax
-  local github_match = flake_url:match("^github:([%w%-_%.]+/[%w%-_%.]+)/([%w%-_%.]+)$")
-  if github_match then
-    local repo, branch = github_match:match("^(.+)/([^/]+)$")
-    if repo and branch then
-      return "github:" .. repo .. "/" .. branch
-    end
-  end
-  
-  -- Handle complex query parameters: ?ref=X&dir=Y, ?rev=X&dir=Y, etc.
-  -- This preserves all Git ref parameters that Nix supports
-  if flake_url:match("%?") then
-    -- Just return as-is - Nix will handle complex query parameters
-    return flake_url
-  end
-  
-  -- Handle gitlab:group/project/branch syntax  
-  local gitlab_match = flake_url:match("^gitlab:([%w%-_%.]+/[%w%-_%.]+)/([%w%-_%.]+)$")
-  if gitlab_match then
-    local repo, branch = gitlab_match:match("^(.+)/([^/]+)$")
-    if repo and branch then
-      return "gitlab:" .. repo .. "/" .. branch
-    end
-  end
-  
+  -- Nix handles all standard flake URL formats natively, just pass through
   return flake_url
 end
 
@@ -217,7 +200,8 @@ function M.build(flake_ref, version)
       -- For git+ URLs, we need to add ?ref= or ?rev= parameter
       local separator = parsed.url:find("?") and "&" or "?"
       -- Remove existing ref/rev if present before adding the new one
-      local cleaned_url = parsed.url:gsub("([%?&])(ref|rev)=[^&#]+", ""):gsub("[?&]$", "")
+      -- Note: Lua patterns don't support | alternation, so we do separate replacements
+      local cleaned_url = parsed.url:gsub("[%?&]ref=[^&#]+", ""):gsub("[%?&]rev=[^&#]+", ""):gsub("[?&]$", "")
       build_ref = cleaned_url .. separator .. "rev=" .. version .. "#" .. parsed.attribute
     end
   end

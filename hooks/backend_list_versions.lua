@@ -40,9 +40,13 @@ function PLUGIN:BackendListVersions(ctx)
   local current_arch = RUNTIME.archType:lower()
 
   local success, data, response = nixhub.fetch_metadata(tool)
-  
-  -- Validate tool metadata and throw error if not found
-  nixhub.validate_metadata(success, data, tool, response)
+
+  -- If package not found in nixhub, return empty list
+  -- This allows flake reference versions to work (e.g., nix:mytool@gitlab+group/repo#default)
+  -- The actual validation happens during install when we have access to the version
+  if not success or not data or not data.releases then
+    return { versions = {} }
+  end
 
   local versions = {}
   for _, release in ipairs(data.releases) do
