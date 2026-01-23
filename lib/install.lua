@@ -3,6 +3,7 @@ local platform = require("platform")
 local vsix = require("vsix")
 local vscode = require("vscode")
 local jetbrains = require("jetbrains")
+local neovim = require("neovim")
 local shell = require("shell")
 local logger = require("logger")
 
@@ -87,6 +88,7 @@ function M.from_flake(flake_ref, version_hint, install_path)
 
   local is_vscode = vscode.is_extension(flake_ref)
   local is_jetbrains = jetbrains.is_plugin(flake_ref)
+  local is_neovim = neovim.is_plugin(flake_ref)
 
   if is_vscode then
     logger.find("Detected VSCode extension flake: " .. flake_ref)
@@ -94,6 +96,8 @@ function M.from_flake(flake_ref, version_hint, install_path)
   elseif is_jetbrains then
     logger.find("Detected JetBrains plugin flake: " .. flake_ref)
     jetbrains.install_plugin_from_store(nix_store_path, flake_ref)
+  elseif is_neovim then
+    neovim.install_plugin_from_store(nix_store_path, flake_ref)
   else
     M.standard_tool(nix_store_path, install_path, flake_ref)
     M.flake_with_hash_workaround(nix_store_path, install_path)
@@ -105,7 +109,8 @@ function M.from_flake(flake_ref, version_hint, install_path)
     version = build_result.version,
     store_path = nix_store_path,
     is_vscode = is_vscode,
-    is_jetbrains = is_jetbrains
+    is_jetbrains = is_jetbrains,
+    is_neovim = is_neovim
   }
 end
 

@@ -7,6 +7,7 @@ A [Mise](https://github.com/jdx/mise) plugin that brings the power of the [Nix](
 - 🚀 **100,000+ packages** from nixpkgs
 - 🔌 **VSCode extensions** support
 - 🔌 **JetBrains plugins** support
+- 🔌 **Neovim plugins** support
 
 ## Prerequisites
 
@@ -76,6 +77,53 @@ mise install "nix:mytool@./my-project"
 mise install "nix:vscode+install=vscode-extensions.golang.go"
 ```
 
+### Neovim Plugins
+
+Install Neovim plugins from nixpkgs `vimPlugins`:
+
+```sh
+# Install nvim-treesitter
+mise install "nix:neovim+install=vimPlugins.nvim-treesitter"
+
+# Install plenary.nvim (common dependency)
+mise install "nix:neovim+install=vimPlugins.plenary-nvim"
+
+# Install telescope.nvim
+mise install "nix:neovim+install=vimPlugins.telescope-nvim"
+```
+
+Plugins are automatically symlinked to `~/.local/share/nvim/site/pack/nix/start/` and will be auto-loaded by Neovim on startup.
+
+**Notes:**
+- No `init.lua` configuration needed - plugins auto-load via Neovim's native `:h packages` mechanism
+- Uses a separate `nix` pack namespace - compatible with lazy.nvim, packer.nvim, etc.
+- Respects `XDG_DATA_HOME` if set
+
+### JetBrains Plugins
+
+Install plugins from the [nix-jetbrains-plugins](https://github.com/theCapypara/nix-jetbrains-plugins) repository:
+
+```sh
+# Install File Watchers plugin for IntelliJ IDEA Ultimate (Linux)
+mise install "nix:jetbrains+install=jetbrains-plugins.x86_64-linux.idea-ultimate.2024.3.com.intellij.plugins.watcher"
+
+# Install File Watchers plugin for IntelliJ IDEA Ultimate (macOS)
+mise install "nix:jetbrains+install=jetbrains-plugins.aarch64-darwin.idea-ultimate.2024.3.com.intellij.plugins.watcher"
+
+# Install GitToolBox for GoLand
+mise install "nix:jetbrains+install=jetbrains-plugins.x86_64-linux.goland.2024.3.zielu.gittoolbox"
+
+# Install Database Tools for WebStorm
+mise install "nix:jetbrains+install=jetbrains-plugins.x86_64-linux.webstorm.2024.3.com.intellij.database"
+```
+
+The plugin will be automatically extracted to the correct JetBrains IDE plugin directory. Restart your IDE to activate the installed plugins.
+
+**Notes:**
+- The system architecture (e.g., `x86_64-linux`, `aarch64-darwin`) must match your current system
+- Plugins are built directly from the nix-jetbrains-plugins flake repository without querying nixhub
+- You can find plugin IDs at the bottom of JetBrains Marketplace pages
+
 ### Unfree Packages
 
 Some packages (e.g. Discord) are marked as unfree in nixpkgs. To install them:
@@ -103,31 +151,6 @@ mise install nix:some-package
 export NIXPKGS_ALLOW_INSECURE=1
 mise install nix:some-package
 ```
-
-### JetBrains Plugins
-
-Install plugins from the [nix-jetbrains-plugins](https://github.com/theCapypara/nix-jetbrains-plugins) repository:
-
-```sh
-# Install File Watchers plugin for IntelliJ IDEA Ultimate (Linux)
-mise install "nix:jetbrains+install=jetbrains-plugins.x86_64-linux.idea-ultimate.2024.3.com.intellij.plugins.watcher"
-
-# Install File Watchers plugin for IntelliJ IDEA Ultimate (macOS)
-mise install "nix:jetbrains+install=jetbrains-plugins.aarch64-darwin.idea-ultimate.2024.3.com.intellij.plugins.watcher"
-
-# Install GitToolBox for GoLand
-mise install "nix:jetbrains+install=jetbrains-plugins.x86_64-linux.goland.2024.3.zielu.gittoolbox"
-
-# Install Database Tools for WebStorm
-mise install "nix:jetbrains+install=jetbrains-plugins.x86_64-linux.webstorm.2024.3.com.intellij.database"
-```
-
-The plugin will be automatically extracted to the correct JetBrains IDE plugin directory. Restart your IDE to activate the installed plugins.
-
-**Notes:**
-- The system architecture (e.g., `x86_64-linux`, `aarch64-darwin`) must match your current system
-- Plugins are built directly from the nix-jetbrains-plugins flake repository without querying nixhub
-- You can find plugin IDs at the bottom of JetBrains Marketplace pages
 
 ## Limitations
 

@@ -4,6 +4,7 @@
 local platform = require("platform")
 local vscode = require("vscode")
 local jetbrains = require("jetbrains")
+local neovim = require("neovim")
 local flake = require("flake")
 local install = require("install")
 local vsix = require("vsix")
@@ -44,6 +45,19 @@ function PLUGIN:BackendInstall(ctx)
     else
       error("Invalid JetBrains plugin format: " .. tool)
     end
+
+  elseif neovim.is_plugin(tool) then
+    -- Neovim plugins: build from nixpkgs vimPlugins and install to pack directory
+    local flake_ref = neovim.extract_flake_ref(tool)
+    local build_result = vsix.from_flake("nixpkgs#" .. flake_ref, requested_version or "")
+    local nix_store_path = vsix.choose_best_output(build_result.outputs, flake_ref)
+    platform.verify_build(nix_store_path, flake_ref)
+    neovim.install_plugin_from_store(nix_store_path, tool)
+    result = {
+      version = build_result.version,
+      store_path = nix_store_path,
+      is_neovim = true
+    }
 
   elseif flake.is_reference(tool) then
     result = install.from_flake(tool, requested_version, install_path)
