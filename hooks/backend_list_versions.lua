@@ -5,6 +5,7 @@ function PLUGIN:BackendListVersions(ctx)
   local version = require("version")
   local vscode = require("vscode")
   local jetbrains = require("jetbrains")
+  local neovim = require("neovim")
   local tool = ctx.tool
 
   if not tool or tool == "" then
@@ -14,6 +15,12 @@ function PLUGIN:BackendListVersions(ctx)
   -- If this is a JetBrains plugin, return a single "latest" version
   -- since plugins are managed by the nix-jetbrains-plugins flake
   if jetbrains.is_plugin(tool) then
+    return { versions = { "latest" } }
+  end
+
+  -- If this is a Neovim plugin, return a single "latest" version
+  -- since plugins are from nixpkgs vimPlugins
+  if neovim.is_plugin(tool) then
     return { versions = { "latest" } }
   end
 

@@ -74,6 +74,8 @@ function M.choose_best_output(outputs, context_label)
   if not has_binaries then
     if context_label and context_label:match("vscode%-extensions%.") then
       logger.pack("VSCode extension package (no CLI binaries expected)")
+    elseif context_label and context_label:match("vimPlugins%.") then
+      logger.pack("Neovim plugin package (no CLI binaries expected)")
     else
       logger.warn("No binaries found. This package may be a library or data-only.")
       logger.hint("Using first available output for symlinking or build environment use.")
