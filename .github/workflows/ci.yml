@@ -61,8 +61,6 @@ jobs:
           sudo apt update
           sudo apt install -y code xvfb
 
-      - run: npm ci --legacy-peer-deps
-
       # Run tests and build
       - name: Run tests
         run: |
@@ -70,71 +68,3 @@ jobs:
           npx nx run-many -t lint test e2e
         env:
           LUA_PATH: "lib/?.lua;;"
-
-  # Release job - runs only when MR is merged to main
-  release:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge pull request')
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      # Install mise
-      - name: Install mise
-        run: |
-          curl https://mise.run | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Install nix
-        uses: cachix/install-nix-action@v30
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-            accept-flake-config = true
-
-      # Install Lua and dependencies (mise.toml uses brew on macOS, apt on Linux)
-      - name: Install Lua and dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y lua5.3 liblua5.3-dev luarocks libreadline-dev
-
-      # Install all tools from mise.toml and initialize
-      - name: Install mise tools
-        run: |
-          mise install
-          mise plugin link nix $PWD --force
-          sudo luarocks install busted --force
-
-      # Install VSCode and virtual display for extension tests
-      - name: Install VSCode and dependencies
-        run: |
-          wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
-          sudo install -o root -g root -m 644 packages.microsoft.gpg /etc/apt/trusted.gpg.d/
-          sudo sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/trusted.gpg.d/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
-          sudo apt update
-          sudo apt install -y code xvfb
-
-      - run: npm ci --legacy-peer-deps
-
-      # Run tests and build
-      - name: Run tests
-        run: |
-          eval "$(mise env)"
-          npx nx run-many -t lint test e2e
-        env:
-          LUA_PATH: "lib/?.lua;;"
-
-      - name: Create release
-        run: |
-          # Configure git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Use nx release - handles versioning, changelog, and GitHub release
-          npx nx release --yes
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
