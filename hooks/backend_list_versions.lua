@@ -37,10 +37,13 @@ function PLUGIN:BackendListVersions(ctx)
 
   -- If the requested version is a flake reference, return the version itself
   -- since flakes don't have traditional version lists
-  local requested_version = ctx.version
-  if requested_version and flake.is_reference(requested_version) then
-    return { versions = { requested_version } }
-  end
+
+  -- mise doesn't provide ctx.version when calling BackendListVersions. (https://mise.jdx.dev/backend-plugin-development.html#backendlistversions-context)
+
+  -- local requested_version = ctx.version
+  -- if requested_version and flake.is_reference(requested_version) then
+  --   return { versions = { requested_version } }
+  -- end
 
   -- Use traditional nixhub.io workflow for regular package names
   local current_os = platform.normalize_os(RUNTIME.osType)
@@ -52,7 +55,7 @@ function PLUGIN:BackendListVersions(ctx)
   -- This allows flake reference versions to work (e.g., nix:mytool@gitlab+group/repo#default)
   -- The actual validation happens during install when we have access to the version
   if not success or not data or not data.releases then
-    return { versions = {} }
+    return { versions = {"latest"} }
   end
 
   local versions = {}
