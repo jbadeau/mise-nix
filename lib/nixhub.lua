@@ -6,12 +6,12 @@ local M = {}
 
 -- Get the base URL for nixhub API
 function M.get_base_url()
-  return os.getenv("MISE_NIX_NIXHUB_BASE_URL") or "https://www.nixhub.io"
+  return os.getenv("MISE_NIX_NIXHUB_BASE_URL") or "https://search.devbox.sh"
 end
 
 -- Fetch tool metadata from nixhub.io
 function M.fetch_metadata(tool)
-  local url = M.get_base_url() .. "/packages/" .. tool .. "?_data=routes%2F_nixhub.packages.%24pkg._index"
+  local url = M.get_base_url() .. "/v2/pkg?name=" .. tool
 
   -- Use native HTTP module
   local resp, err = http.get({
