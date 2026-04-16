@@ -33,10 +33,10 @@ describe("Nixhub module", function()
   end)
 
   describe("get_base_url", function()
-    it("should return nixhub URL", function()
+    it("should return devbox search URL", function()
       local url = nixhub.get_base_url()
       assert.is_string(url)
-      assert.match("nixhub%.io", url)
+      assert.match("search%.devbox%.sh", url)
     end)
   end)
 
