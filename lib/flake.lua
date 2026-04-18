@@ -154,6 +154,14 @@ function M.parse_reference(flake_ref)
   }
 end
 
+-- Check if a flake reference points to a local path
+function M.is_local(ref)
+  if not ref or not M.is_reference(ref) then return false end
+  local parsed = M.parse_reference(ref)
+  local url = parsed.url
+  return url:match("^%.") or url:match("^/") or url:match("^path:") or url:match("^file:") or false
+end
+
 -- Get available versions for a flake (mock implementation for now)
 function M.get_versions(flake_ref)
   -- NOTE: This is a mock implementation.

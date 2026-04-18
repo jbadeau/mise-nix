@@ -6,10 +6,38 @@ function PLUGIN:BackendListVersions(ctx)
   local vscode = require("vscode")
   local jetbrains = require("jetbrains")
   local neovim = require("neovim")
+  local shell = require("shell")
+  local file = require("file")
   local tool = ctx.tool
 
   if not tool or tool == "" then
     error("Tool name cannot be empty")
+  end
+
+  -- Invalidate exec_env cache for local flake references when the working
+  -- directory changes, so BackendExecEnv re-runs and can update the install
+  -- symlink to point to the correct nix store path.
+  local cache_dir = os.getenv("MISE_CACHE_DIR") or (os.getenv("HOME") .. "/.cache/mise")
+  local current_dir = os.getenv("PWD") or ""
+  local tool_cache_dir = cache_dir .. "/nix-" .. tool
+  local breadcrumb = tool_cache_dir .. "/last_cwd"
+
+  local last_dir = ""
+  if file.exists(breadcrumb) then
+    last_dir = file.read(breadcrumb) or ""
+  end
+
+  if last_dir ~= current_dir then
+    -- Clear exec_env cache for all nix tools so BackendExecEnv re-runs.
+    -- All nix-* dirs must be cleared because this hook may only fire for
+    -- one tool while other tools also need cache invalidation.
+    shell.try_exec('find "%s" -path "*/nix-*/exec_env_*" -delete 2>/dev/null', cache_dir)
+    shell.try_exec('mkdir -p "%s"', tool_cache_dir)
+    local wf = io.open(breadcrumb, "w")
+    if wf then
+      wf:write(current_dir)
+      wf:close()
+    end
   end
 
   -- If this is a JetBrains plugin, return a single "latest" version
