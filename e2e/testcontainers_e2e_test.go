@@ -23,7 +23,7 @@ func TestShellspecE2EInContainer(t *testing.T) {
 	ctr, err := testcontainers.Run(ctx, "",
 		testcontainers.WithDockerfile(testcontainers.FromDockerfile{
 			Context:    "..",
-			Dockerfile: "Dockerfile.e2e",
+			Dockerfile: "Dockerfile",
 			Repo:       "mise-nix-e2e",
 			Tag:        "test",
 		}),
