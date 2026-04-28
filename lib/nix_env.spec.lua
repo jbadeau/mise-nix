@@ -1,9 +1,14 @@
 -- Mock dependencies for env tests
 local mock_file_contents = {}
 local mock_dir_checks = {}
+local mock_tool_json = ""
 
 package.loaded["cmd"] = {
   exec = function(command)
+    if command == "mise ls --current --installed --json 2>/dev/null" then
+      return mock_tool_json
+    end
+
     if command:match("readlink") then
       return "/nix/store/abc-hello/\n"
     end
@@ -83,6 +88,7 @@ local env = require("nix_env")
 describe("env module", function()
   before_each(function()
     mock_file_contents = {}
+    mock_tool_json = ""
     shell_exec_capture = nil
   end)
 
@@ -287,6 +293,42 @@ describe("env module", function()
       end
       assert.is_true(found_path)
 
+      package.loaded["nix_env"] = nil
+    end)
+
+    it("should merge MANPATH entries from active nix tools on PATH", function()
+      mock_tool_json = '{"nix:git":[{"install_path":"/Users/jbadeau/.local/share/mise/installs/nix-git/2.53.0","active":true}],"nix:jq":[{"install_path":"/Users/jbadeau/.local/share/mise/installs/nix-jq/1.8.1","active":true}],"go":[{"install_path":"/Users/jbadeau/.local/share/mise/installs/go/1.25.9","active":true}]}'
+      package.loaded["json"].decode = function(str)
+        return {
+          ["nix:git"] = {
+            { install_path = "/Users/jbadeau/.local/share/mise/installs/nix-git/2.53.0", active = true }
+          },
+          ["nix:jq"] = {
+            { install_path = "/Users/jbadeau/.local/share/mise/installs/nix-jq/1.8.1", active = true }
+          },
+          ["go"] = {
+            { install_path = "/Users/jbadeau/.local/share/mise/installs/go/1.25.9", active = true }
+          }
+        }
+      end
+
+      package.loaded["nix_env"] = nil
+      local env2 = require("nix_env")
+
+      local result = env2.fallback_path_env("/Users/jbadeau/.local/share/mise/installs/nix-jq/1.8.1")
+      assert.is_table(result)
+
+      local manpath
+      for _, v in ipairs(result) do
+        if v.key == "MANPATH" then
+          manpath = v.value
+        end
+      end
+      assert.is_not_nil(manpath)
+      assert.is_true(manpath:match("/Users/jbadeau/.local/share/mise/installs/nix%-git/2.53.0/share/man") ~= nil)
+      assert.is_true(manpath:match("/Users/jbadeau/.local/share/mise/installs/nix%-jq/1.8.1/share/man") ~= nil)
+
+      package.loaded["json"].decode = function(str) return nil end
       package.loaded["nix_env"] = nil
     end)
 

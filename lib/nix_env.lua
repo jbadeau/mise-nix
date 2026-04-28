@@ -190,8 +190,8 @@ function M.load_cached_env(install_path)
   return nil, "no cached env found"
 end
 
--- Build fallback PATH-only env vars from an install path
--- Also adds MANPATH, INFOPATH, XDG_DATA_DIRS when their dirs exist
+-- Build fallback PATH-only env vars from an install path.
+-- Also adds MANPATH, INFOPATH, XDG_DATA_DIRS when their dirs exist.
 function M.fallback_path_env(install_path)
   if not install_path or install_path == "" then
     return {}
@@ -214,10 +214,9 @@ function M.fallback_path_env(install_path)
   end
 
   -- MANPATH
-  local man_path = real_path .. "/share/man"
-  local has_man = cmd.exec("test -d '" .. man_path .. "' && echo yes || echo no"):match("yes")
-  if has_man then
-    table.insert(env_vars, { key = "MANPATH", value = man_path })
+  local man_paths = M.collect_man_paths(install_path, real_path)
+  if #man_paths > 0 then
+    table.insert(env_vars, { key = "MANPATH", value = table.concat(man_paths, ":") .. ":" })
   end
 
   -- INFOPATH
@@ -235,6 +234,47 @@ function M.fallback_path_env(install_path)
   end
 
   return env_vars
+end
+
+-- Collect man directories for all active Nix tools.
+-- This avoids later tools overwriting earlier MANPATH entries during shell activation.
+function M.collect_man_paths(install_path, real_path)
+  local cmd = require("cmd")
+  local json = require("json")
+  local seen = {}
+  local man_paths = {}
+
+  local function add_man_path(man_path)
+    if seen[man_path] then
+      return
+    end
+    local has_man = cmd.exec("test -d '" .. man_path .. "' && echo yes || echo no"):match("yes")
+    if has_man then
+      seen[man_path] = true
+      table.insert(man_paths, man_path)
+    end
+  end
+
+  local ok, tool_json = pcall(cmd.exec, "mise ls --current --installed --json 2>/dev/null")
+  if ok and tool_json and tool_json ~= "" then
+    local decoded_ok, tools = pcall(json.decode, tool_json)
+    if decoded_ok and type(tools) == "table" then
+      for tool_name, versions in pairs(tools) do
+        if type(tool_name) == "string" and tool_name:match("^nix:") and type(versions) == "table" then
+          for _, entry in ipairs(versions) do
+            if type(entry) == "table" and entry.active and entry.install_path then
+              add_man_path(entry.install_path .. "/share/man")
+            end
+          end
+        end
+      end
+    end
+  end
+
+  add_man_path(install_path .. "/share/man")
+  add_man_path(real_path .. "/share/man")
+
+  return man_paths
 end
 
 -- Derive env vars from the nix store path using hints
