@@ -4,6 +4,10 @@ _G.RUNTIME = {
   archType = "amd64"
 }
 
+local symlink_calls = {}
+local mkdir_calls = {}
+local link_output_calls = {}
+
 package.loaded["http"] = {
   get = function(opts)
     return {
@@ -49,10 +53,14 @@ package.loaded["vsix"] = {
     }
   end,
   from_flake = function(flake_ref, version_hint)
+    local outputs = {"/nix/store/def"}
+    if flake_ref == "nixpkgs#multi" then
+      outputs = {"/nix/store/multi-bin", "/nix/store/multi-man"}
+    end
     return {
       flake_ref = flake_ref,
       version = "1.0.0",
-      outputs = {"/nix/store/def"}
+      outputs = outputs
     }
   end,
   choose_best_output = function(outputs, context) return outputs[1] end
@@ -64,7 +72,12 @@ package.loaded["vscode"] = {
 }
 
 package.loaded["shell"] = {
-  symlink_force = function(src, dst) end,
+  symlink_force = function(src, dst)
+    table.insert(symlink_calls, { src = src, dst = dst })
+  end,
+  mkdir_force = function(path)
+    table.insert(mkdir_calls, path)
+  end,
   is_containerized = function() return false end,
   try_exec = function(cmd, ...) return false, "" end
 }
@@ -77,7 +90,10 @@ package.loaded["logger"] = {
 }
 
 package.loaded["output_join"] = {
-  link_outputs = function(outputs, install_path) return {} end
+  link_outputs = function(outputs, install_path)
+    table.insert(link_output_calls, { outputs = outputs, install_path = install_path })
+    return {}
+  end
 }
 
 package.loaded["nix_env"] = {
@@ -87,8 +103,15 @@ package.loaded["nix_env"] = {
 local install = require("install")
 
 describe("Install module", function()
+  before_each(function()
+    symlink_calls = {}
+    mkdir_calls = {}
+    link_output_calls = {}
+  end)
+
   it("should have all required functions", function()
     assert.is_function(install.standard_tool)
+    assert.is_function(install.multi_output_tool)
     assert.is_function(install.flake_with_hash_workaround)
     assert.is_function(install.from_nixhub)
     assert.is_function(install.from_flake)
@@ -99,6 +122,26 @@ describe("Install module", function()
       assert.has_no.errors(function()
         install.standard_tool("/nix/store/abc", "/usr/local/bin/tool", "nodejs")
       end)
+      assert.equal(1, #symlink_calls)
+      assert.equal("/nix/store/abc", symlink_calls[1].src)
+      assert.equal("/usr/local/bin/tool", symlink_calls[1].dst)
+    end)
+  end)
+
+  describe("multi_output_tool", function()
+    it("should create a writable join directory and link outputs", function()
+      install.multi_output_tool(
+        {"/nix/store/pkg-bin", "/nix/store/pkg-man"},
+        "/install/path",
+        "pkg"
+      )
+
+      assert.equal(0, #symlink_calls)
+      assert.equal(1, #mkdir_calls)
+      assert.equal("/install/path", mkdir_calls[1])
+      assert.equal(1, #link_output_calls)
+      assert.same({"/nix/store/pkg-bin", "/nix/store/pkg-man"}, link_output_calls[1].outputs)
+      assert.equal("/install/path", link_output_calls[1].install_path)
     end)
   end)
 
@@ -117,6 +160,19 @@ describe("Install module", function()
       assert.is_table(result)
       assert.equal("1.0.0", result.version)
       assert.equal("/nix/store/def", result.store_path)
+    end)
+
+    it("should use a join directory for multi-output flakes", function()
+      local result = install.from_flake("nixpkgs#multi", "v1.0.0", "/install/path")
+
+      assert.is_table(result)
+      assert.equal("/nix/store/multi-bin", result.store_path)
+      assert.equal(1, #mkdir_calls)
+      assert.equal("/install/path", mkdir_calls[1])
+      assert.equal(1, #link_output_calls)
+      assert.equal(1, #symlink_calls) -- hash workaround only
+      assert.equal("/nix/store/multi-bin", symlink_calls[1].src)
+      assert.is_not_equal("/install/path", symlink_calls[1].dst)
     end)
   end)
 

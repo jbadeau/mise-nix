@@ -57,7 +57,8 @@ cleanup_nix_tools() {
     # Exclude shellspec which is needed for running tests
     mise ls --installed 2>/dev/null | grep '^nix:' | grep -v 'nix:shellspec' | while IFS= read -r line; do
         # Extract tool name from the output (format: "nix:tool@version   /path/to/install")
-        tool=$(echo "$line" | awk '{print $1}')
+        set -- $line
+        tool="$1"
         if [ -n "$tool" ]; then
             mise uninstall "$tool" 2>/dev/null || true
         fi
@@ -74,6 +75,10 @@ cleanup_nix_tools() {
     fi
 }
 
+nix_current_system() {
+    nix eval --impure --raw --expr builtins.currentSystem 2>/dev/null
+}
+
 # Helper function to create test flake for local flake testing
 create_test_flake() {
     test_flake_dir="/tmp/mise-test-flake"
@@ -86,6 +91,7 @@ create_test_flake() {
         '  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";' \
         '  outputs = { self, nixpkgs }: {' \
         '    packages.x86_64-linux.default = nixpkgs.legacyPackages.x86_64-linux.hello;' \
+        '    packages.aarch64-linux.default = nixpkgs.legacyPackages.aarch64-linux.hello;' \
         '    packages.aarch64-darwin.default = nixpkgs.legacyPackages.aarch64-darwin.hello;' \
         '    packages.x86_64-darwin.default = nixpkgs.legacyPackages.x86_64-darwin.hello;' \
         '  };' \
