@@ -27,6 +27,15 @@ function M.symlink_force(src, dst)
   file.symlink(src, dst)
 end
 
+-- Replace a path with an empty directory
+function M.mkdir_force(path)
+  M.try_exec('rm -rf "%s"', path)
+  local ok, result = M.try_exec('mkdir -p "%s"', path)
+  if not ok then
+    error("Failed to create directory: " .. path .. " " .. tostring(result))
+  end
+end
+
 -- Batch create multiple symlinks
 function M.symlink_batch(operations)
   if not operations or #operations == 0 then return end

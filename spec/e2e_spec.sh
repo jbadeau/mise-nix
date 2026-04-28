@@ -124,6 +124,7 @@ Describe "mise-nix plugin"
     End
 
     It "can install using https+ workaround syntax"
+      Skip if "nurl build fetches crates.io and is too network-sensitive for isolated e2e" [ "${MISE_NIX_ISOLATED_E2E}" = "true" ]
       When call mise install "nix:nurl@https+github.com/nix-community/nurl.git#default"
       The status should be success
     End
@@ -131,6 +132,7 @@ Describe "mise-nix plugin"
 
   Describe "Unfree Packages"
     It "fails to install unfree package without NIXPKGS_ALLOW_UNFREE"
+      Skip if "discord is not available on this Nix system" [ "$(nix_current_system)" != "x86_64-linux" ]
       Skip if "NIXPKGS_ALLOW_UNFREE is set" [ -n "${NIXPKGS_ALLOW_UNFREE}" ]
       Skip if "MISE_NIX_ALLOW_UNFREE is set" [ "${MISE_NIX_ALLOW_UNFREE}" = "true" ]
 
@@ -140,12 +142,14 @@ Describe "mise-nix plugin"
     End
 
     It "can install unfree package with NIXPKGS_ALLOW_UNFREE=1"
+      Skip if "discord is not available on this Nix system" [ "$(nix_current_system)" != "x86_64-linux" ]
       export NIXPKGS_ALLOW_UNFREE=1
       When call mise install nix:discord
       The status should be success
     End
 
     It "can install unfree package with MISE_NIX_ALLOW_UNFREE=true (auto-sets NIXPKGS)"
+      Skip if "discord is not available on this Nix system" [ "$(nix_current_system)" != "x86_64-linux" ]
       export MISE_NIX_ALLOW_UNFREE=true
       When call mise install nix:discord
       The status should be success
@@ -257,6 +261,7 @@ Describe "mise-nix plugin"
     End
 
     It "works in dev-env mode for flake packages"
+      mise install nix:nixpkgs#hello >/dev/null
       export MISE_NIX_ENV_MODE=dev-env
       When call mise exec nix:nixpkgs#hello -- hello
       The status should be success

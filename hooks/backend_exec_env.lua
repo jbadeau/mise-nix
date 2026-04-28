@@ -5,6 +5,9 @@ function PLUGIN:BackendExecEnv(ctx)
   if ok and env_vars and #env_vars > 0 then
     return { env_vars = env_vars }
   end
+  if os.getenv("MISE_NIX_ENV_MODE") == "dev-env" and not ok then
+    error(env_vars)
+  end
 
   -- Ultimate fallback: bare PATH to install_path/bin
   return {
