@@ -31,14 +31,6 @@ jobs:
           curl https://mise.run | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Install nix
-        uses: cachix/install-nix-action@v30
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-            accept-flake-config = true
-
       # Install Lua and dependencies (mise.toml uses brew on macOS, apt on Linux)
       - name: Install Lua and dependencies
         run: |
@@ -52,24 +44,17 @@ jobs:
           mise plugin link nix $PWD --force
           sudo luarocks install busted --force
 
-      # Install VSCode and virtual display for extension tests
-      - name: Install VSCode and dependencies
-        run: |
-          wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
-          sudo install -o root -g root -m 644 packages.microsoft.gpg /etc/apt/trusted.gpg.d/
-          sudo sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/trusted.gpg.d/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
-          sudo apt update
-          sudo apt install -y code xvfb
-
-      - run: npm ci --legacy-peer-deps
-
-      # Run tests and build
+      # Run tests
       - name: Run tests
         run: |
           eval "$(mise env)"
-          npx nx run-many -t lint test e2e
+          mise run test
+          mise run e2e
         env:
           LUA_PATH: "lib/?.lua;;"
+          MISE_NIX_REQUIRE_DOCKER: "1"
+          MISE_LIBGIT2: "false"
+          MISE_GIX: "false"
 
   # Release job - runs only when MR is merged to main
   release:
@@ -87,14 +72,6 @@ jobs:
           curl https://mise.run | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Install nix
-        uses: cachix/install-nix-action@v30
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-            accept-flake-config = true
-
       # Install Lua and dependencies (mise.toml uses brew on macOS, apt on Linux)
       - name: Install Lua and dependencies
         run: |
@@ -108,33 +85,25 @@ jobs:
           mise plugin link nix $PWD --force
           sudo luarocks install busted --force
 
-      # Install VSCode and virtual display for extension tests
-      - name: Install VSCode and dependencies
-        run: |
-          wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
-          sudo install -o root -g root -m 644 packages.microsoft.gpg /etc/apt/trusted.gpg.d/
-          sudo sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/trusted.gpg.d/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
-          sudo apt update
-          sudo apt install -y code xvfb
-
-      - run: npm ci --legacy-peer-deps
-
-      # Run tests and build
+      # Run tests
       - name: Run tests
         run: |
           eval "$(mise env)"
-          npx nx run-many -t lint test e2e
+          mise run test
+          mise run e2e
         env:
           LUA_PATH: "lib/?.lua;;"
+          MISE_NIX_REQUIRE_DOCKER: "1"
+          MISE_LIBGIT2: "false"
+          MISE_GIX: "false"
 
       - name: Create release
         run: |
-          # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Use nx release - handles versioning, changelog, and GitHub release
-          npx nx release --yes
+
+          VERSION="$(lua -e 'dofile("metadata.lua"); print(PLUGIN.version)')"
+          gh release create "mise-nix@${VERSION}" --generate-notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
