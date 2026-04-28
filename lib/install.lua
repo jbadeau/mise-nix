@@ -66,13 +66,23 @@ function M.from_nixhub(tool, requested_version, install_path)
     jetbrains.install_plugin_from_store(nix_store_path, tool)
   else
     M.standard_tool(nix_store_path, install_path, tool)
+    -- Link additional outputs (man, doc, etc.) into install_path
+    if #build_result.outputs > 1 then
+      require("output_join").link_outputs(build_result.outputs, install_path)
+    end
+
+    -- Cache nix print-dev-env at install time for fast exec
+    if build_result.flake_ref then
+      require("nix_env").cache_dev_env(build_result.flake_ref, install_path)
+    end
   end
 
   logger.done(string.format("Successfully installed %s@%s", tool, build_result.version))
-  
+
   return {
     version = build_result.version,
     store_path = nix_store_path,
+    outputs = build_result.outputs,
     is_vscode = vscode.is_extension(tool),
     is_jetbrains = jetbrains.is_plugin(tool)
   }
@@ -101,6 +111,17 @@ function M.from_flake(flake_ref, version_hint, install_path)
   else
     M.standard_tool(nix_store_path, install_path, flake_ref)
     M.flake_with_hash_workaround(nix_store_path, install_path)
+    -- Link additional outputs (man, doc, etc.) into install_path
+    if #build_result.outputs > 1 then
+      require("output_join").link_outputs(build_result.outputs, install_path)
+    end
+
+    -- Cache nix print-dev-env at install time for fast exec
+    local cache_ref = flake_ref
+    if build_result.flake_ref then
+      cache_ref = build_result.flake_ref
+    end
+    require("nix_env").cache_dev_env(cache_ref, install_path)
   end
 
   logger.done("Successfully installed " .. build_result.version)
@@ -108,6 +129,7 @@ function M.from_flake(flake_ref, version_hint, install_path)
   return {
     version = build_result.version,
     store_path = nix_store_path,
+    outputs = build_result.outputs,
     is_vscode = is_vscode,
     is_jetbrains = is_jetbrains,
     is_neovim = is_neovim

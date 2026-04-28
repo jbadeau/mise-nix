@@ -76,6 +76,14 @@ package.loaded["logger"] = {
   debug = function(msg) end
 }
 
+package.loaded["output_join"] = {
+  link_outputs = function(outputs, install_path) return {} end
+}
+
+package.loaded["nix_env"] = {
+  cache_dev_env = function(flake_ref, install_path) return nil, "mocked" end
+}
+
 local install = require("install")
 
 describe("Install module", function()

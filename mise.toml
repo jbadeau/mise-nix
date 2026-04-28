@@ -1,10 +1,8 @@
 [env]
 LUA_PATH="lib/?.lua;;"
-NX_NO_CLOUD=true
+_.path = ["~/.luarocks/bin"]
 
 [tools]
-# lua via brew (asdf plugin has LuaRocks 3.13.0 bug)
-node = "24.5.0"
 github-cli = "2.83.2"
 shellspec = "0.28.1"
 
@@ -22,7 +20,7 @@ run = "busted -p %.spec%.lua lib"
 
 [tasks.e2e]
 description = "e2e"
-run = "shellspec"
+run = "shellspec -f d"
 
 [tasks.nuke]
 description = "nuke"
