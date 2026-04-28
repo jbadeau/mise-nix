@@ -9,10 +9,27 @@ local logger = require("logger")
 
 local M = {}
 
+-- Get the install mode: symlink (default) or copy (CI-friendly)
+-- MISE_NIX_INSTALL_MODE=copy copies nix store outputs into install_path
+-- so the directory is self-contained and cacheable without the nix store.
+function M.get_install_mode()
+  return os.getenv("MISE_NIX_INSTALL_MODE") or "symlink"
+end
+
 -- Standard tool installation via symlink (PVC-optimized)
 function M.standard_tool(nix_store_path, install_path, label)
   logger.tool("Installing as standard tool: " .. label)
-  
+
+  if M.get_install_mode() == "copy" then
+    logger.debug("Using copy mode for CI cacheability")
+    shell.try_exec('rm -rf "%s"', install_path)
+    local ok, err = shell.try_exec('cp -a "%s" "%s"', nix_store_path, install_path)
+    if not ok then
+      error("Failed to copy " .. nix_store_path .. " to " .. install_path)
+    end
+    return
+  end
+
   -- In containerized environments, check if symlink already exists and is correct
   if shell.is_containerized() then
     local ok, current_target = shell.try_exec('readlink "%s" 2>/dev/null', install_path)
@@ -21,7 +38,7 @@ function M.standard_tool(nix_store_path, install_path, label)
       return
     end
   end
-  
+
   shell.symlink_force(nix_store_path, install_path)
 end
 
@@ -38,12 +55,18 @@ function M.flake_with_hash_workaround(nix_store_path, install_path)
   -- WORKAROUND: mise expects a directory named after the nix store hash for direct flake references
   local nix_hash = nix_store_path:match("/nix/store/([^/]+)")
   if not nix_hash then return end
-  
+
   local install_dir = install_path:match("^(.+)/[^/]+$")
   if not install_dir then return end
-  
+
   local hash_path = install_dir .. "/" .. nix_hash
-  
+
+  if M.get_install_mode() == "copy" then
+    shell.try_exec('rm -rf "%s"', hash_path)
+    shell.try_exec('cp -a "%s" "%s"', nix_store_path, hash_path)
+    return
+  end
+
   -- In containerized environments, check if target already points correctly to avoid unnecessary I/O
   if shell.is_containerized() then
     local ok, current_target = shell.try_exec('readlink "%s" 2>/dev/null', hash_path)
@@ -52,7 +75,7 @@ function M.flake_with_hash_workaround(nix_store_path, install_path)
       return
     end
   end
-  
+
   shell.symlink_force(nix_store_path, hash_path)
 end
 
