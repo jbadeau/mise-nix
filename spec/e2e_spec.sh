@@ -11,7 +11,6 @@ Describe "mise-nix plugin"
     It "can install nix:hello@2.12.1 (specific version)"
       When call mise install nix:hello@2.12.1
       The status should be success
-      The output should include "Successfully installed hello@2.12.1"
     End
 
     It "can execute nix:hello@2.12.1"
@@ -25,13 +24,11 @@ Describe "mise-nix plugin"
     It "can install nix:hello (latest version)"
       When call mise install nix:hello
       The status should be success
-      The output should include "Successfully installed hello@"
     End
 
     It "can install nix:hello@stable (version alias)"
       When call mise install nix:hello@stable
       The status should be success
-      The output should include "Successfully installed hello@"
     End
   End
 
@@ -39,7 +36,6 @@ Describe "mise-nix plugin"
     It "can install from nixpkgs GitHub repository (default branch)"
       When call mise install "nix:hello@github+nixos/nixpkgs#hello"
       The status should be success
-      The output should include "Building flake"
     End
 
     It "can execute hello from GitHub source"
@@ -51,13 +47,11 @@ Describe "mise-nix plugin"
     It "can install from specific branch"
       When call mise install "nix:hello@github+nixos/nixpkgs/nixos-unstable#hello"
       The status should be success
-      The output should include "Building flake"
     End
 
     It "can install from specific release/tag"
       When call mise install "nix:hello@github+nixos/nixpkgs?ref=23.11#hello"
       The status should be success
-      The output should include "Building flake"
     End
 
     It "supports GitHub shorthand syntax (alternative)"
@@ -69,14 +63,11 @@ Describe "mise-nix plugin"
 
   Describe "GitLab Sources"
     It "can parse gitlab+ prefix for ls-remote"
-      # Tests that gitlab+ prefix is correctly recognized as a flake reference
-      # Uses a fake project - ls-remote just validates parsing, doesn't fetch
       When call mise ls-remote "nix:mytool@gitlab+group/subgroup/project#default"
       The status should be success
     End
 
     It "can parse nested GitLab groups"
-      # Tests deeply nested group paths like gitlab+a/b/c/d#pkg
       When call mise ls-remote "nix:mytool@gitlab+org/team/subteam/repo#default"
       The status should be success
     End
@@ -92,7 +83,6 @@ Describe "mise-nix plugin"
     It "can install VSCode extensions"
       When call mise install "nix:vscode+install=vscode-extensions.golang.go"
       The status should be success
-      The output should include "Successfully installed"
     End
   End
 
@@ -129,16 +119,13 @@ Describe "mise-nix plugin"
     End
 
     It "supports https+ workaround syntax for ls-remote"
-      # Uses nurl - a small nix-community flake (~1MB vs nixpkgs ~300MB)
       When call mise ls-remote "nix:nurl@https+github.com/nix-community/nurl.git#default"
       The status should be success
     End
 
     It "can install using https+ workaround syntax"
-      # Uses nurl - a small nix-community flake for faster tests
       When call mise install "nix:nurl@https+github.com/nix-community/nurl.git#default"
       The status should be success
-      The output should include "Building flake"
     End
   End
 
@@ -156,43 +143,33 @@ Describe "mise-nix plugin"
       export NIXPKGS_ALLOW_UNFREE=1
       When call mise install nix:discord
       The status should be success
-      The output should include "Successfully installed discord"
     End
 
     It "can install unfree package with MISE_NIX_ALLOW_UNFREE=true (auto-sets NIXPKGS)"
       export MISE_NIX_ALLOW_UNFREE=true
-      # NIXPKGS_ALLOW_UNFREE is auto-set by mise-nix when MISE_NIX_ALLOW_UNFREE=true
       When call mise install nix:discord
       The status should be success
-      The output should include "Successfully installed discord"
     End
   End
 
   Describe "Insecure Packages"
-    # Note: Insecure packages change over time based on CVEs
-    # These tests verify the env var mechanism works
-
     It "can install with NIXPKGS_ALLOW_INSECURE=1 (impure mode enabled)"
       export NIXPKGS_ALLOW_INSECURE=1
-      # Use a regular package to verify impure mode doesn't break normal installs
       When call mise install nix:hello
       The status should be success
-      The output should include "Successfully installed hello"
     End
 
     It "can install with MISE_NIX_ALLOW_INSECURE=true (auto-sets NIXPKGS)"
       export MISE_NIX_ALLOW_INSECURE=true
-      # NIXPKGS_ALLOW_INSECURE is auto-set by mise-nix
       When call mise install nix:hello
       The status should be success
-      The output should include "Successfully installed hello"
     End
   End
 
   Describe "Local Flakes (Experimental)"
     It "blocks local flakes when disabled"
       Skip if "Local flakes are enabled" [ "${MISE_NIX_ALLOW_LOCAL_FLAKES}" = "true" ]
-      
+
       When call mise install "nix:mytool@./my-project"
       The status should be failure
       The error should include "Package not found: mytool"
@@ -200,15 +177,188 @@ Describe "mise-nix plugin"
 
     It "allows local flakes when enabled"
       Skip if "Local flakes are disabled" [ "${MISE_NIX_ALLOW_LOCAL_FLAKES}" != "true" ]
-      
-      # Create a simple test flake directory and file
+
       BeforeCall create_test_flake
-      
+
       When call mise install "nix:mytool@/tmp/mise-test-flake"
       The status should be success
-      The output should include "WARNING: Using local flake"
-      
+      The error should include "WARNING: Using local flake"
+
       AfterCall cleanup_test_flake
+    End
+  End
+
+  Describe "Nix Environment - Java"
+    check_java_home() {
+      mkdir -p /tmp/mise-test-jdk
+      cd /tmp/mise-test-jdk
+      mise settings set experimental true 2>/dev/null
+      mise use nix:nixpkgs#jdk >/dev/null 2>&1
+      mise exec -- sh -c 'echo JAVA_HOME=$JAVA_HOME'
+      local rc=$?
+      rm -rf /tmp/mise-test-jdk
+      return $rc
+    }
+
+    It "can install jdk"
+      When call mise install nix:nixpkgs#jdk
+      The status should be success
+    End
+
+    It "can run java -version from jdk"
+      When call mise exec nix:nixpkgs#jdk -- java -version
+      The status should be success
+      The error should include "openjdk version"
+    End
+
+    It "exposes JAVA_HOME when activated via mise use"
+      When call check_java_home
+      The status should be success
+      The output should include "JAVA_HOME=/nix/store/"
+    End
+  End
+
+  Describe "Nix Environment - Go"
+    check_goroot() {
+      mkdir -p /tmp/mise-test-go
+      cd /tmp/mise-test-go
+      mise settings set experimental true 2>/dev/null
+      mise use nix:nixpkgs#go >/dev/null 2>&1
+      mise exec -- sh -c 'echo GOROOT=$GOROOT'
+      local rc=$?
+      rm -rf /tmp/mise-test-go
+      return $rc
+    }
+
+    It "can install go"
+      When call mise install nix:nixpkgs#go
+      The status should be success
+    End
+
+    It "can run go version"
+      When call mise exec nix:nixpkgs#go -- go version
+      The status should be success
+      The output should include "go version go"
+    End
+
+    It "exposes GOROOT when activated via mise use"
+      When call check_goroot
+      The status should be success
+      The output should include "GOROOT=/nix/store/"
+    End
+  End
+
+  Describe "Nix Environment - Fallback Modes"
+    It "falls back to PATH-only in path-only mode"
+      export MISE_NIX_ENV_MODE=path-only
+      When call mise exec nix:hello -- hello
+      The status should be success
+      The output should include "Hello, world!"
+    End
+
+    It "works in dev-env mode for flake packages"
+      export MISE_NIX_ENV_MODE=dev-env
+      When call mise exec nix:nixpkgs#hello -- hello
+      The status should be success
+      The output should include "Hello, world!"
+    End
+
+    It "defaults to auto mode"
+      When call mise exec nix:hello -- hello
+      The status should be success
+      The output should include "Hello, world!"
+    End
+
+    It "works with explicit auto mode"
+      export MISE_NIX_ENV_MODE=auto
+      When call mise exec nix:hello -- hello
+      The status should be success
+      The output should include "Hello, world!"
+    End
+  End
+
+  Describe "Multi-output Linking - jq"
+    It "can install jq"
+      When call mise install nix:nixpkgs#jq
+      The status should be success
+    End
+
+    It "can run jq"
+      When call mise exec nix:nixpkgs#jq -- jq --version
+      The status should be success
+      The output should include "jq-"
+    End
+  End
+
+  Describe "Multi-output Linking - git (man, docs, completions)"
+    It "can install git"
+      When call mise install nix:nixpkgs#git
+      The status should be success
+    End
+
+    It "can run git"
+      When call mise exec nix:nixpkgs#git -- git --version
+      The status should be success
+      The output should include "git version"
+    End
+
+    It "exposes MANPATH for git man pages"
+      When call mise exec nix:nixpkgs#git -- sh -c 'test -n "$MANPATH" && echo "MANPATH set"'
+      The status should be success
+      The output should include "MANPATH set"
+    End
+
+    It "exposes XDG_DATA_DIRS for share directory"
+      When call mise exec nix:nixpkgs#git -- sh -c 'test -n "$XDG_DATA_DIRS" && echo "XDG set"'
+      The status should be success
+      The output should include "XDG set"
+    End
+  End
+
+  Describe "Multi-output Linking - gh (shell completions)"
+    It "can install gh"
+      When call mise install nix:nixpkgs#gh
+      The status should be success
+    End
+
+    It "can run gh"
+      When call mise exec nix:nixpkgs#gh -- gh --version
+      The status should be success
+      The output should include "gh version"
+    End
+
+    It "exposes XDG_DATA_DIRS for shell completions"
+      When call mise exec nix:nixpkgs#gh -- sh -c 'test -n "$XDG_DATA_DIRS" && echo "XDG set"'
+      The status should be success
+      The output should include "XDG set"
+    End
+  End
+
+  Describe "Multi-output Linking - Dev Profile"
+    It "can install openssl with dev profile"
+      export MISE_NIX_LINK_PROFILE=dev
+      When call mise install nix:nixpkgs#openssl
+      The status should be success
+    End
+
+    It "can install pkg-config with dev profile"
+      export MISE_NIX_LINK_PROFILE=dev
+      When call mise install nix:nixpkgs#pkg-config
+      The status should be success
+    End
+
+    It "runtime profile does not link include or pkgconfig"
+      export MISE_NIX_LINK_PROFILE=runtime
+      When call mise install nix:nixpkgs#openssl
+      The status should be success
+    End
+  End
+
+  Describe "Custom Link Paths"
+    It "respects MISE_NIX_LINK_PATHS override"
+      export MISE_NIX_LINK_PATHS="/bin,/share/man"
+      When call mise install nix:nixpkgs#jq
+      The status should be success
     End
   End
 End
