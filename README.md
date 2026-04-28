@@ -174,6 +174,10 @@ Environment variables can be used to configure this plugin:
 | `MISE_NIX_ALLOW_LOCAL_FLAKES` | Set to `true` to enable local flake references |
 | `MISE_NIX_NIXHUB_BASE_URL` | Custom nixhub.io URL |
 | `MISE_NIX_NIXPKGS_REPO_URL` | Custom nixpkgs repository URL |
+| `MISE_NIX_ENV_MODE` | Environment variable resolution: `auto` (default), `dev-env`, or `path-only` |
+| `MISE_NIX_LINK_PROFILE` | Multi-output link profile: `runtime` (default) or `dev` |
+| `MISE_NIX_LINK_PATHS` | Override link profile with comma-separated paths (e.g. `/bin,/share/man`) |
+| `MISE_NIX_INSTALL_MODE` | Install strategy: `symlink` (default) or `copy` (CI-friendly, see below) |
 
 Native Nix env vars are also supported:
 
@@ -181,6 +185,41 @@ Native Nix env vars are also supported:
 |----------|-------------|
 | `NIXPKGS_ALLOW_UNFREE` | Set to `1` to allow unfree packages (enables `--impure`) |
 | `NIXPKGS_ALLOW_INSECURE` | Set to `1` to allow insecure packages (enables `--impure`) |
+
+### Environment Variables
+
+Packages that expose runtime environment variables (e.g. `JAVA_HOME`, `GOROOT`) are automatically detected. At install time, `nix print-dev-env` is cached so that `mise exec` resolves env vars instantly without any Nix evaluation.
+
+### CI Caching
+
+By default, mise-nix symlinks install paths to the Nix store. This doesn't survive CI cache restores since the Nix store paths won't exist. Set `MISE_NIX_INSTALL_MODE=copy` to copy outputs into the install directory instead, making it self-contained and cacheable:
+
+```yaml
+# GitHub Actions
+env:
+  MISE_NIX_INSTALL_MODE: copy
+
+steps:
+  - uses: actions/cache@v4
+    with:
+      path: ~/.local/share/mise/installs
+      key: mise-nix-${{ hashFiles('mise.toml') }}
+  - run: mise install
+```
+
+```yaml
+# GitLab CI
+variables:
+  MISE_NIX_INSTALL_MODE: copy
+
+job:
+  cache:
+    key: mise-nix-$CI_COMMIT_REF_SLUG
+    paths:
+      - ~/.local/share/mise/installs
+  script:
+    - mise install
+```
 
 ## Nix Setup
 
