@@ -16,6 +16,66 @@ function M.get_install_mode()
   return os.getenv("MISE_NIX_INSTALL_MODE") or "symlink"
 end
 
+-- Detect whether the store path's bin/ or sbin/ contains hidden entries
+-- (e.g. .foo-wrapped artifacts produced by Nix's wrapProgram/makeWrapper).
+-- Mise's shim diff treats these inconsistently and reports them as missing
+-- shims forever (jbadeau/mise-nix#44), so we restructure the install layout
+-- to hide them when present.
+function M.has_hidden_bin_files(nix_store_path)
+  for _, sub in ipairs({ "bin", "sbin" }) do
+    local ok, listing = shell.try_exec('ls -1A "%s" 2>/dev/null', nix_store_path .. "/" .. sub)
+    if ok and listing and listing ~= "" then
+      for entry in listing:gmatch("[^\n]+") do
+        if entry:sub(1, 1) == "." then
+          return true
+        end
+      end
+    end
+  end
+  return false
+end
+
+-- Build install_path as a directory mirroring nix_store_path, except that
+-- bin/ and sbin/ are real directories containing only non-hidden symlinks.
+-- All other top-level entries are symlinked transparently to the store.
+function M.install_filtered(nix_store_path, install_path)
+  shell.mkdir_force(install_path)
+
+  local ok, listing = shell.try_exec('ls -1 "%s" 2>/dev/null', nix_store_path)
+  if not ok or not listing then
+    error("Failed to list " .. nix_store_path)
+  end
+
+  for entry in listing:gmatch("[^\n]+") do
+    if entry ~= "" then
+      local src = nix_store_path .. "/" .. entry
+      local dst = install_path .. "/" .. entry
+
+      if entry == "bin" or entry == "sbin" then
+        shell.try_exec('mkdir -p "%s"', dst)
+        local _, sub_listing = shell.try_exec('ls -1 "%s" 2>/dev/null', src)
+        if sub_listing then
+          for sub in sub_listing:gmatch("[^\n]+") do
+            if sub ~= "" then
+              shell.try_exec('ln -s "%s" "%s"', src .. "/" .. sub, dst .. "/" .. sub)
+            end
+          end
+        end
+      else
+        shell.symlink_force(src, dst)
+      end
+    end
+  end
+end
+
+-- After copy mode, delete hidden wrapper artifacts from bin/ and sbin/.
+function M.strip_hidden_bins(install_path)
+  for _, sub in ipairs({ "bin", "sbin" }) do
+    local dir = install_path .. "/" .. sub
+    shell.try_exec('find "%s" -maxdepth 1 -name ".*" \\( -type f -o -type l \\) -delete 2>/dev/null', dir)
+  end
+end
+
 -- Standard tool installation via symlink (PVC-optimized)
 function M.standard_tool(nix_store_path, install_path, label)
   logger.tool("Installing as standard tool: " .. label)
@@ -27,6 +87,13 @@ function M.standard_tool(nix_store_path, install_path, label)
     if not ok then
       error("Failed to copy " .. nix_store_path .. " to " .. install_path)
     end
+    M.strip_hidden_bins(install_path)
+    return
+  end
+
+  if M.has_hidden_bin_files(nix_store_path) then
+    logger.debug("Detected hidden wrapper artifacts; using filtered install layout")
+    M.install_filtered(nix_store_path, install_path)
     return
   end
 
@@ -64,6 +131,12 @@ function M.flake_with_hash_workaround(nix_store_path, install_path)
   if M.get_install_mode() == "copy" then
     shell.try_exec('rm -rf "%s"', hash_path)
     shell.try_exec('cp -a "%s" "%s"', nix_store_path, hash_path)
+    M.strip_hidden_bins(hash_path)
+    return
+  end
+
+  if M.has_hidden_bin_files(nix_store_path) then
+    M.install_filtered(nix_store_path, hash_path)
     return
   end
 
